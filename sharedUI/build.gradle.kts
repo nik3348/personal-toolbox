@@ -8,8 +8,8 @@ plugins {
 }
 
 kotlin {
-    androidLibrary {
-       namespace = "com.jetbrains.greeting.greetingkmp.sharedUI"
+    android {
+       namespace = "com.atebitstack.toolbox.reminders.sharedUI"
        compileSdk = libs.versions.android.compileSdk.get().toInt()
        minSdk = libs.versions.android.minSdk.get().toInt()
        compilerOptions {
@@ -37,6 +37,8 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
+            implementation(libs.compose.materialIconsCore)
+            implementation(libs.compose.materialIconsExtended)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

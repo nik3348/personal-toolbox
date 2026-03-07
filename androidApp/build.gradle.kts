@@ -21,11 +21,11 @@ kotlin {
 }
 
 android {
-    namespace = "com.jetbrains.greeting.greetingkmp"
+    namespace = "com.atebitstack.toolbox.reminders"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "com.jetbrains.greeting.greetingkmp"
+        applicationId = "com.atebitstack.toolbox.reminders"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1

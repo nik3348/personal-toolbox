@@ -9,7 +9,7 @@ plugins {
 
 kotlin {
     android {
-        namespace = "com.jetbrains.greeting.greetingkmp.shared"
+        namespace = "com.atebitstack.toolbox.reminders.shared"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
         compilerOptions {
