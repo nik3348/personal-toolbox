@@ -21,11 +21,11 @@ kotlin {
 }
 
 android {
-    namespace = "com.atebitstack.toolbox.reminders"
+    namespace = "com.atebitstack.voidbox.reminders"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "com.atebitstack.toolbox.reminders"
+        applicationId = "com.atebitstack.voidbox.reminders"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1

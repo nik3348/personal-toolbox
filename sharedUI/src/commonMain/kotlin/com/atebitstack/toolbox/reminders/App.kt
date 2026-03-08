@@ -1,4 +1,4 @@
-package com.atebitstack.toolbox.reminders
+package com.atebitstack.voidbox.reminders
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -43,9 +43,9 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.outlined.Alarm
-import androidx.compose.material.icons.outlined.AlarmAdd
-import androidx.compose.material.icons.outlined.AlarmOff
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.NotificationAdd
+import androidx.compose.material.icons.outlined.NotificationsOff
 import androidx.compose.material.icons.automirrored.outlined.Label
 import androidx.compose.material.icons.automirrored.outlined.Notes
 import androidx.compose.material3.Button
@@ -136,17 +136,17 @@ private enum class Screen { HOME, REMINDERS }
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun App(
-    onAlarmSchedulerReady: ((AlarmViewModel) -> Unit)? = null,
-    alarmViewModel: AlarmViewModel = viewModel(),
+    onReminderSchedulerReady: ((ReminderViewModel) -> Unit)? = null,
+    reminderViewModel: ReminderViewModel = viewModel(),
 ) {
-    LaunchedEffect(alarmViewModel) {
-        onAlarmSchedulerReady?.invoke(alarmViewModel)
+    LaunchedEffect(reminderViewModel) {
+        onReminderSchedulerReady?.invoke(reminderViewModel)
     }
 
     MaterialTheme(colorScheme = AppColorScheme) {
-        val alarms by alarmViewModel.alarms.collectAsStateWithLifecycle()
-        val showAddSheet by alarmViewModel.showAddSheet.collectAsStateWithLifecycle()
-        val editingAlarm by alarmViewModel.editingAlarm.collectAsStateWithLifecycle()
+        val reminders by reminderViewModel.reminders.collectAsStateWithLifecycle()
+        val showAddSheet by reminderViewModel.showAddSheet.collectAsStateWithLifecycle()
+        val editingReminder by reminderViewModel.editingReminder.collectAsStateWithLifecycle()
         var currentScreen by remember { mutableStateOf(Screen.HOME) }
 
         Box(
@@ -165,7 +165,7 @@ fun App(
                                 Icon(
                                     imageVector = when (currentScreen) {
                                         Screen.HOME -> Icons.Filled.Home
-                                        Screen.REMINDERS -> Icons.Outlined.Alarm
+                                        Screen.REMINDERS -> Icons.Outlined.Notifications
                                     },
                                     contentDescription = null,
                                     tint = AccentPurple,
@@ -174,8 +174,8 @@ fun App(
                                 Spacer(Modifier.width(10.dp))
                                 Text(
                                     when (currentScreen) {
-                                        Screen.HOME -> "Toolbox"
-                                        Screen.REMINDERS -> "Silent Alarms"
+                                        Screen.HOME -> "Voidbox"
+                                        Screen.REMINDERS -> "Reminders"
                                     },
                                     fontWeight = FontWeight.Black,
                                 )
@@ -210,7 +210,7 @@ fun App(
                         NavigationBarItem(
                             selected = currentScreen == Screen.REMINDERS,
                             onClick = { currentScreen = Screen.REMINDERS },
-                            icon = { Icon(Icons.Outlined.Alarm, contentDescription = "Reminders") },
+                            icon = { Icon(Icons.Outlined.Notifications, contentDescription = "Reminders") },
                             label = { Text("Reminders") },
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor = AccentPurple,
@@ -225,25 +225,25 @@ fun App(
                 floatingActionButton = {
                     if (currentScreen == Screen.REMINDERS) {
                         FloatingActionButton(
-                            onClick = { alarmViewModel.showAddAlarm() },
+                            onClick = { reminderViewModel.showAddReminder() },
                             shape = CircleShape,
                             containerColor = AccentPurple,
                             elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 12.dp),
                         ) {
-                            Icon(Icons.Filled.Add, contentDescription = "Add alarm", tint = Color.White)
+                            Icon(Icons.Filled.Add, contentDescription = "Add reminder", tint = Color.White)
                         }
                     }
                 },
             ) { paddingValues ->
                 when (currentScreen) {
                     Screen.HOME -> HomeScreen(
-                        alarmCount = alarms.count { it.enabled },
-                        totalAlarms = alarms.size,
+                        reminderCount = reminders.count { it.enabled },
+                        totalReminders = reminders.size,
                         onNavigateToReminders = { currentScreen = Screen.REMINDERS },
                         modifier = Modifier.padding(paddingValues),
                     )
                     Screen.REMINDERS -> AnimatedContent(
-                        targetState = alarms.isEmpty(),
+                        targetState = reminders.isEmpty(),
                         transitionSpec = {
                             fadeIn(tween(350)) + scaleIn(tween(350), initialScale = 0.96f) togetherWith
                                 fadeOut(tween(250)) + scaleOut(tween(250), targetScale = 0.98f)
@@ -252,11 +252,11 @@ fun App(
                         if (empty) {
                             EmptyState(Modifier.padding(paddingValues))
                         } else {
-                            AlarmList(
-                                alarms = alarms,
-                                onToggle = { alarmViewModel.toggleAlarm(it) },
-                                onEdit = { alarmViewModel.showEditAlarm(it) },
-                                onDelete = { alarmViewModel.deleteAlarm(it) },
+                            ReminderList(
+                                reminders = reminders,
+                                onToggle = { reminderViewModel.toggleReminder(it) },
+                                onEdit = { reminderViewModel.showEditReminder(it) },
+                                onDelete = { reminderViewModel.deleteReminder(it) },
                                 modifier = Modifier.padding(paddingValues),
                             )
                         }
@@ -266,15 +266,15 @@ fun App(
         }
 
         if (showAddSheet) {
-            val alarmToEdit = editingAlarm
-            AddEditAlarmSheet(
-                editingAlarm = alarmToEdit,
-                onDismiss = { alarmViewModel.dismissAddSheet() },
+            val reminderToEdit = editingReminder
+            AddEditReminderSheet(
+                editingReminder = reminderToEdit,
+                onDismiss = { reminderViewModel.dismissAddSheet() },
                 onConfirm = { hour, minute, label, description ->
-                    if (alarmToEdit != null) {
-                        alarmViewModel.updateAlarm(alarmToEdit.id, hour, minute, label, description)
+                    if (reminderToEdit != null) {
+                        reminderViewModel.updateReminder(reminderToEdit.id, hour, minute, label, description)
                     } else {
-                        alarmViewModel.addAlarm(hour, minute, label, description)
+                        reminderViewModel.addReminder(hour, minute, label, description)
                     }
                 },
             )
@@ -349,7 +349,7 @@ private fun EmptyState(modifier: Modifier = Modifier) {
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.AlarmOff,
+                    imageVector = Icons.Outlined.NotificationsOff,
                     contentDescription = null,
                     tint = AccentPurpleLight,
                     modifier = Modifier.size(52.dp),
@@ -359,7 +359,7 @@ private fun EmptyState(modifier: Modifier = Modifier) {
             Spacer(Modifier.height(28.dp))
 
             Text(
-                "No alarms yet",
+                "No reminders yet",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = TextPrimary,
@@ -368,7 +368,7 @@ private fun EmptyState(modifier: Modifier = Modifier) {
             Spacer(Modifier.height(10.dp))
 
             Text(
-                "Tap + to add your first silent alarm and stay notified without disruption",
+                "Tap + to add your first reminder and stay notified without disruption",
                 color = TextSecondary,
                 textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.bodyMedium,
@@ -378,12 +378,12 @@ private fun EmptyState(modifier: Modifier = Modifier) {
     }
 }
 
-// ── Alarm List ─────────────────────────────────────────────────────────────
+// ── Reminder List ─────────────────────────────────────────────────────────
 @Composable
-private fun AlarmList(
-    alarms: List<Alarm>,
+private fun ReminderList(
+    reminders: List<Reminder>,
     onToggle: (Int) -> Unit,
-    onEdit: (Alarm) -> Unit,
+    onEdit: (Reminder) -> Unit,
     onDelete: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -392,13 +392,13 @@ private fun AlarmList(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        items(alarms, key = { it.id }) { alarm ->
+        items(reminders, key = { it.id }) { reminder ->
             AnimatedVisibility(visible = true, enter = fadeIn() + slideInVertically { it / 4 }) {
-                SwipeableAlarmCard(
-                    alarm = alarm,
-                    onToggle = { onToggle(alarm.id) },
-                    onEdit = { onEdit(alarm) },
-                    onDelete = { onDelete(alarm.id) },
+                SwipeableReminderCard(
+                    reminder = reminder,
+                    onToggle = { onToggle(reminder.id) },
+                    onEdit = { onEdit(reminder) },
+                    onDelete = { onDelete(reminder.id) },
                 )
             }
         }
@@ -406,11 +406,11 @@ private fun AlarmList(
     }
 }
 
-// ── Swipeable Alarm Card ───────────────────────────────────────────────────
+// ── Swipeable Reminder Card ──────────────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SwipeableAlarmCard(
-    alarm: Alarm,
+private fun SwipeableReminderCard(
+    reminder: Reminder,
     onToggle: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
@@ -467,15 +467,15 @@ private fun SwipeableAlarmCard(
             }
         },
     ) {
-        AlarmCard(alarm = alarm, onToggle = onToggle)
+        ReminderCard(reminder = reminder, onToggle = onToggle)
     }
 }
 
-// ── Alarm Card ─────────────────────────────────────────────────────────────
+// ── Reminder Card ─────────────────────────────────────────────────────────
 @Composable
-private fun AlarmCard(alarm: Alarm, onToggle: () -> Unit) {
+private fun ReminderCard(reminder: Reminder, onToggle: () -> Unit) {
     val scale by animateFloatAsState(
-        targetValue = if (alarm.enabled) 1f else 0.98f,
+        targetValue = if (reminder.enabled) 1f else 0.98f,
         animationSpec = spring(),
     )
 
@@ -484,17 +484,17 @@ private fun AlarmCard(alarm: Alarm, onToggle: () -> Unit) {
             .fillMaxWidth()
             .scale(scale)
             .shadow(
-                elevation = if (alarm.enabled) 10.dp else 3.dp,
+                elevation = if (reminder.enabled) 10.dp else 3.dp,
                 shape = RoundedCornerShape(24.dp),
-                ambientColor = AccentPurple.copy(alpha = if (alarm.enabled) 0.25f else 0f),
+                ambientColor = AccentPurple.copy(alpha = if (reminder.enabled) 0.25f else 0f),
             ),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (alarm.enabled) DarkCard else DarkCardDisabled,
+            containerColor = if (reminder.enabled) DarkCard else DarkCardDisabled,
         ),
         border = BorderStroke(
             1.dp,
-            if (alarm.enabled) CardBorderEnabled else CardBorderDisabled,
+            if (reminder.enabled) CardBorderEnabled else CardBorderDisabled,
         ),
     ) {
         Row(
@@ -510,7 +510,7 @@ private fun AlarmCard(alarm: Alarm, onToggle: () -> Unit) {
                     .clip(RoundedCornerShape(4.dp))
                     .background(
                         Brush.verticalGradient(
-                            if (alarm.enabled) {
+                            if (reminder.enabled) {
                                 listOf(AccentPurple, AccentCyan)
                             } else {
                                 listOf(TextDisabled, TextDisabled)
@@ -524,39 +524,39 @@ private fun AlarmCard(alarm: Alarm, onToggle: () -> Unit) {
             // Time + label + description
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    alarm.timeFormatted,
+                    reminder.timeFormatted,
                     fontSize = 40.sp,
                     fontWeight = FontWeight.W200,
-                    color = if (alarm.enabled) TextPrimary else TextDisabled,
+                    color = if (reminder.enabled) TextPrimary else TextDisabled,
                     letterSpacing = 0.5.sp,
                     lineHeight = 44.sp,
                 )
 
-                if (alarm.label.isNotBlank()) {
+                if (reminder.label.isNotBlank()) {
                     Text(
-                        alarm.label,
+                        reminder.label,
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
-                        color = if (alarm.enabled) TextPrimary.copy(alpha = 0.9f) else TextDisabled,
+                        color = if (reminder.enabled) TextPrimary.copy(alpha = 0.9f) else TextDisabled,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
 
-                if (alarm.description.isNotBlank()) {
+                if (reminder.description.isNotBlank()) {
                     Spacer(Modifier.height(4.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Outlined.Notes,
                             contentDescription = null,
-                            tint = TextSecondary.copy(alpha = if (alarm.enabled) 0.7f else 0.4f),
+                            tint = TextSecondary.copy(alpha = if (reminder.enabled) 0.7f else 0.4f),
                             modifier = Modifier.size(14.dp),
                         )
                         Spacer(Modifier.width(4.dp))
                         Text(
-                            alarm.description,
+                            reminder.description,
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary.copy(alpha = if (alarm.enabled) 0.85f else 0.5f),
+                            color = TextSecondary.copy(alpha = if (reminder.enabled) 0.85f else 0.5f),
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -567,7 +567,7 @@ private fun AlarmCard(alarm: Alarm, onToggle: () -> Unit) {
             Spacer(Modifier.width(12.dp))
 
             Switch(
-                checked = alarm.enabled,
+                checked = reminder.enabled,
                 onCheckedChange = { onToggle() },
                 colors = SwitchDefaults.colors(
                     checkedTrackColor = AccentPurple,
@@ -580,22 +580,22 @@ private fun AlarmCard(alarm: Alarm, onToggle: () -> Unit) {
     }
 }
 
-// ── Add/Edit Alarm Bottom Sheet ────────────────────────────────────────────
+// ── Add/Edit Reminder Bottom Sheet ───────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AddEditAlarmSheet(
-    editingAlarm: Alarm?,
+private fun AddEditReminderSheet(
+    editingReminder: Reminder?,
     onDismiss: () -> Unit,
     onConfirm: (hour: Int, minute: Int, label: String, description: String) -> Unit,
 ) {
-    val isEditing = editingAlarm != null
+    val isEditing = editingReminder != null
     val timePickerState = rememberTimePickerState(
-        initialHour = editingAlarm?.hour ?: 8,
-        initialMinute = editingAlarm?.minute ?: 0,
+        initialHour = editingReminder?.hour ?: 8,
+        initialMinute = editingReminder?.minute ?: 0,
         is24Hour = false,
     )
-    var label by remember { mutableStateOf(editingAlarm?.label ?: "") }
-    var description by remember { mutableStateOf(editingAlarm?.description ?: "") }
+    var label by remember { mutableStateOf(editingReminder?.label ?: "") }
+    var description by remember { mutableStateOf(editingReminder?.description ?: "") }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -621,14 +621,14 @@ private fun AddEditAlarmSheet(
             // Sheet header
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector = if (isEditing) Icons.Filled.Edit else Icons.Outlined.AlarmAdd,
+                    imageVector = if (isEditing) Icons.Filled.Edit else Icons.Outlined.NotificationAdd,
                     contentDescription = null,
                     tint = AccentPurpleLight,
                     modifier = Modifier.size(22.dp),
                 )
                 Spacer(Modifier.width(10.dp))
                 Text(
-                    if (isEditing) "Edit Alarm" else "New Alarm",
+                    if (isEditing) "Edit Reminder" else "New Reminder",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = TextPrimary,
@@ -636,7 +636,7 @@ private fun AddEditAlarmSheet(
             }
             Spacer(Modifier.height(2.dp))
             Text(
-                if (isEditing) "Update your alarm details" else "Choose a time and add a label",
+                if (isEditing) "Update your reminder details" else "Choose a time and add a label",
                 style = MaterialTheme.typography.bodyMedium,
                 color = TextSecondary,
             )
@@ -676,7 +676,7 @@ private fun AddEditAlarmSheet(
             OutlinedTextField(
                 value = label,
                 onValueChange = { label = it },
-                label = { Text("Alarm Name") },
+                label = { Text("Reminder Name") },
                 placeholder = { Text("e.g. Morning workout") },
                 leadingIcon = {
                     Icon(Icons.AutoMirrored.Outlined.Label, contentDescription = null, modifier = Modifier.size(20.dp))
@@ -733,7 +733,7 @@ private fun AddEditAlarmSheet(
                 Icon(Icons.Filled.Check, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    if (isEditing) "Update Alarm" else "Set Alarm",
+                    if (isEditing) "Update Reminder" else "Set Reminder",
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 16.sp,
                 )

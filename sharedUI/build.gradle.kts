@@ -9,7 +9,7 @@ plugins {
 
 kotlin {
     android {
-       namespace = "com.atebitstack.toolbox.reminders.sharedUI"
+       namespace = "com.atebitstack.voidbox.reminders.sharedUI"
        compileSdk = libs.versions.android.compileSdk.get().toInt()
        minSdk = libs.versions.android.minSdk.get().toInt()
        compilerOptions {

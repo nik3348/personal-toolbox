@@ -1,4 +1,4 @@
-package com.atebitstack.toolbox.reminders
+package com.atebitstack.voidbox.reminders
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -24,11 +24,11 @@ class MainActivity : ComponentActivity() {
 
         requestNotificationPermission()
 
-        val alarmScheduler = AndroidAlarmScheduler(applicationContext)
+        val reminderScheduler = AndroidReminderScheduler(applicationContext)
 
         setContent {
-            App(onAlarmSchedulerReady = { viewModel ->
-                viewModel.alarmScheduler = alarmScheduler
+            App(onReminderSchedulerReady = { viewModel ->
+                viewModel.reminderScheduler = reminderScheduler
             })
         }
     }

@@ -1,4 +1,4 @@
-package com.atebitstack.toolbox.reminders
+package com.atebitstack.voidbox.reminders
 
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
