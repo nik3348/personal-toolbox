@@ -26,7 +26,6 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.Notes
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -44,19 +43,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
-// ── Palette (mirrors App.kt) ────────────────────────────────────────────────
-private val DarkBackground   = Color(0xFF0D0D1A)
-private val DarkSurface      = Color(0xFF17172A)
-private val DarkCard         = Color(0xFF1E1E33)
-private val AccentPurple     = Color(0xFF7C5CFC)
-private val AccentPurpleLight= Color(0xFFAA8FFF)
-private val AccentCyan       = Color(0xFF4FD1C5)
-private val AccentGreen      = Color(0xFF48BB78)
-private val AccentAmber      = Color(0xFFF6AD55)
-private val TextPrimary      = Color(0xFFEEEEF8)
-private val TextSecondary    = Color(0xFF9090B0)
-private val CardBorderEnabled= Color(0xFF3A3060)
 
 // ── Home Screen ─────────────────────────────────────────────────────────────
 @Composable

@@ -25,11 +25,15 @@ class MainActivity : ComponentActivity() {
         requestNotificationPermission()
 
         val reminderScheduler = AndroidReminderScheduler(applicationContext)
+        val reminderStore = AndroidReminderStore(applicationContext)
 
         setContent {
-            App(onReminderSchedulerReady = { viewModel ->
-                viewModel.reminderScheduler = reminderScheduler
-            })
+            App(
+                reminderStore = reminderStore,
+                onReminderSchedulerReady = { viewModel ->
+                    viewModel.reminderScheduler = reminderScheduler
+                },
+            )
         }
     }
 
