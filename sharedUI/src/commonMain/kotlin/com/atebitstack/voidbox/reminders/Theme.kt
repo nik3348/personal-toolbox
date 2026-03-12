@@ -1,55 +1,116 @@
 package com.atebitstack.voidbox.reminders
 
+import androidx.compose.material3.Typography
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import androidx.compose.material3.Typography
 
-// ── Palette ──────────────────────────────────────────────────────────────────
-val DarkBackground    = Color(0xFF0D0D1A)
-val DarkSurface       = Color(0xFF17172A)
-val DarkSurfaceHigh   = Color(0xFF232341)
-val DarkCard          = Color(0xFF1E1E33)
-val AccentPurple      = Color(0xFF7C5CFC)
-val AccentPurpleLight = Color(0xFFAA8FFF)
-val AccentCyan        = Color(0xFF4FD1C5)
-val AccentGreen       = Color(0xFF48BB78)
-val AccentAmber       = Color(0xFFF6AD55)
-val TextPrimary       = Color(0xFFEEEEF8)
-val TextSecondary     = Color(0xFFB0B0CF)
-val CardBorderEnabled  = Color(0xFF3A3060)
-val CardBorderDisabled = Color(0xFF252540)
-val DarkCardDisabled   = Color(0xFF161628)
-val TextDisabled       = Color(0xFF606080)
+// Material 3 baseline purple — light
+val AppLightColorScheme = lightColorScheme(
+    primary = Color(0xFF6750A4),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFFEADDFF),
+    onPrimaryContainer = Color(0xFF21005D),
+    secondary = Color(0xFF625B71),
+    onSecondary = Color(0xFFFFFFFF),
+    secondaryContainer = Color(0xFFE8DEF8),
+    onSecondaryContainer = Color(0xFF1D192B),
+    tertiary = Color(0xFF7D5260),
+    onTertiary = Color(0xFFFFFFFF),
+    tertiaryContainer = Color(0xFFFFD8E4),
+    onTertiaryContainer = Color(0xFF31111D),
+    error = Color(0xFFB3261E),
+    onError = Color(0xFFFFFFFF),
+    errorContainer = Color(0xFFF9DEDC),
+    onErrorContainer = Color(0xFF410E0B),
+    background = Color(0xFFFFFBFE),
+    onBackground = Color(0xFF1C1B1F),
+    surface = Color(0xFFFFFBFE),
+    onSurface = Color(0xFF1C1B1F),
+    surfaceVariant = Color(0xFFE7E0EC),
+    onSurfaceVariant = Color(0xFF49454F),
+    outline = Color(0xFF79747E),
+)
 
-// ── Typography ───────────────────────────────────────────────────────────────
+// Material 3 baseline purple — dark
+val AppDarkColorScheme = darkColorScheme(
+    primary = Color(0xFFD0BCFF),
+    onPrimary = Color(0xFF381E72),
+    primaryContainer = Color(0xFF4F378B),
+    onPrimaryContainer = Color(0xFFEADDFF),
+    secondary = Color(0xFFCCC2DC),
+    onSecondary = Color(0xFF332D41),
+    secondaryContainer = Color(0xFF4A4458),
+    onSecondaryContainer = Color(0xFFE8DEF8),
+    tertiary = Color(0xFFEFB8C8),
+    onTertiary = Color(0xFF492532),
+    tertiaryContainer = Color(0xFF633B48),
+    onTertiaryContainer = Color(0xFFFFD8E4),
+    error = Color(0xFFF2B8B5),
+    onError = Color(0xFF601410),
+    errorContainer = Color(0xFF8C1D18),
+    onErrorContainer = Color(0xFFF9DEDC),
+    background = Color(0xFF1C1B1F),
+    onBackground = Color(0xFFE6E1E5),
+    surface = Color(0xFF1C1B1F),
+    onSurface = Color(0xFFE6E1E5),
+    surfaceVariant = Color(0xFF49454F),
+    onSurfaceVariant = Color(0xFFCAC4D0),
+    outline = Color(0xFF938F99),
+)
+
 val AppTypography = Typography(
     headlineSmall = TextStyle(
         fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.ExtraBold,
-        fontSize = 30.sp,
-        lineHeight = 34.sp,
+        fontWeight = FontWeight.Bold,
+        fontSize = 24.sp,
+        lineHeight = 32.sp,
         letterSpacing = (-0.2).sp,
+    ),
+    titleLarge = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Bold,
+        fontSize = 22.sp,
+        lineHeight = 28.sp,
+        letterSpacing = 0.5.sp,
     ),
     titleMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.SemiBold,
         fontSize = 18.sp,
         lineHeight = 24.sp,
+        letterSpacing = 0.1.sp,
+    ),
+    titleSmall = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Bold,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+        letterSpacing = 0.1.sp,
     ),
     bodyMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Normal,
-        fontSize = 15.sp,
-        lineHeight = 22.sp,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+        letterSpacing = 0.25.sp,
+    ),
+    bodySmall = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Normal,
+        fontSize = 12.sp,
+        lineHeight = 16.sp,
+        letterSpacing = 0.4.sp,
     ),
     labelSmall = TextStyle(
         fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.Medium,
-        fontSize = 11.sp,
-        lineHeight = 14.sp,
-        letterSpacing = 0.2.sp,
+        fontWeight = FontWeight.Bold,
+        fontSize = 10.sp,
+        lineHeight = 16.sp,
+        letterSpacing = 1.sp, // High tracking for uppercase-style labels
     ),
 )
