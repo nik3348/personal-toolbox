@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material.icons.filled.DarkMode
@@ -63,7 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
-private enum class AppTab { Home, Reminders }
+private enum class AppTab { Home, Reminders, Groceries }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,14 +72,21 @@ fun App(
     onReminderSchedulerReady: (ReminderViewModel) -> Unit = {},
     reminderStore: ReminderStore = InMemoryReminderStore,
     viewModel: ReminderViewModel = viewModel { ReminderViewModel(reminderStore) },
+    onGrocerySchedulerReady: (GroceryViewModel) -> Unit = {},
+    groceryStore: GroceryStore = InMemoryGroceryStore,
+    groceryViewModel: GroceryViewModel = viewModel { GroceryViewModel(groceryStore) },
 ) {
     LaunchedEffect(Unit) {
         onReminderSchedulerReady(viewModel)
+        onGrocerySchedulerReady(groceryViewModel)
     }
 
     val reminders by viewModel.reminders.collectAsState()
     val showAddSheet by viewModel.showAddSheet.collectAsState()
     val editingReminder by viewModel.editingReminder.collectAsState()
+    val groceries by groceryViewModel.groceries.collectAsState()
+    val showGrocerySheet by groceryViewModel.showAddSheet.collectAsState()
+    val editingGrocery by groceryViewModel.editingGrocery.collectAsState()
     var currentTab by remember { mutableStateOf(AppTab.Home) }
     var darkTheme by remember { mutableStateOf(false) }
 
@@ -125,13 +133,23 @@ fun App(
                             icon = { Icon(Icons.Outlined.Notifications, contentDescription = "Reminders") },
                             label = { Text("Reminders") },
                         )
+                        NavigationBarItem(
+                            selected = currentTab == AppTab.Groceries,
+                            onClick = { currentTab = AppTab.Groceries },
+                            icon = { Icon(Icons.Outlined.ShoppingCart, contentDescription = "Groceries") },
+                            label = { Text("Groceries") },
+                        )
                     }
                 },
                 floatingActionButton = {
-                    if (currentTab == AppTab.Reminders) {
-                        FloatingActionButton(onClick = { viewModel.showAddReminder() }) {
+                    when (currentTab) {
+                        AppTab.Reminders -> FloatingActionButton(onClick = { viewModel.showAddReminder() }) {
                             Icon(Icons.Filled.Add, contentDescription = "Add reminder")
                         }
+                        AppTab.Groceries -> FloatingActionButton(onClick = { groceryViewModel.showAddGrocery() }) {
+                            Icon(Icons.Filled.Add, contentDescription = "Add grocery")
+                        }
+                        else -> {}
                     }
                 },
             ) { innerPadding ->
@@ -140,6 +158,7 @@ fun App(
                         reminderCount = reminders.count { it.enabled },
                         totalReminders = reminders.size,
                         onNavigateToReminders = { currentTab = AppTab.Reminders },
+                        onNavigateToGroceries = { currentTab = AppTab.Groceries },
                         modifier = Modifier.padding(innerPadding),
                     )
                     AppTab.Reminders -> RemindersTabScreen(
@@ -147,6 +166,18 @@ fun App(
                         onToggleReminder = viewModel::toggleReminder,
                         onDeleteReminder = viewModel::deleteReminder,
                         onEditReminder = viewModel::showEditReminder,
+                        modifier = Modifier.padding(innerPadding),
+                    )
+                    AppTab.Groceries -> GroceryTabScreen(
+                        groceries = groceries,
+                        onDeleteGrocery = groceryViewModel::deleteGrocery,
+                        onEditGrocery = groceryViewModel::showEditGrocery,
+                        onAddGrocery = groceryViewModel::addGrocery,
+                        onUpdateGrocery = groceryViewModel::updateGrocery,
+                        showAddSheet = showGrocerySheet,
+                        editingGrocery = editingGrocery,
+                        onShowAddSheet = groceryViewModel::showAddGrocery,
+                        onDismissAddSheet = groceryViewModel::dismissAddSheet,
                         modifier = Modifier.padding(innerPadding),
                     )
                 }

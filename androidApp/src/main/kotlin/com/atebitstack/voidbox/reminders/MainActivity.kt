@@ -26,12 +26,18 @@ class MainActivity : ComponentActivity() {
 
         val reminderScheduler = AndroidReminderScheduler(applicationContext)
         val reminderStore = AndroidReminderStore(applicationContext)
+        val groceryScheduler = GroceryNotificationScheduler(applicationContext)
+        val groceryStore = AndroidGroceryStore(applicationContext)
 
         setContent {
             App(
                 reminderStore = reminderStore,
                 onReminderSchedulerReady = { viewModel ->
                     viewModel.reminderScheduler = reminderScheduler
+                },
+                groceryStore = groceryStore,
+                onGrocerySchedulerReady = { groceryViewModel ->
+                    groceryViewModel.groceryScheduler = groceryScheduler
                 },
             )
         }

@@ -16,6 +16,7 @@ import androidx.compose.material.icons.automirrored.outlined.Notes
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -35,6 +36,7 @@ fun HomeScreen(
     reminderCount: Int,
     totalReminders: Int,
     onNavigateToReminders: () -> Unit,
+    onNavigateToGroceries: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -51,7 +53,7 @@ fun HomeScreen(
                 modifier = Modifier.padding(horizontal = 4.dp),
             )
         }
-        item { FeatureGrid(onNavigateToReminders = onNavigateToReminders) }
+        item { FeatureGrid(onNavigateToReminders = onNavigateToReminders, onNavigateToGroceries = onNavigateToGroceries) }
         item { Spacer(modifier = Modifier.height(88.dp)) }
     }
 }
@@ -105,7 +107,10 @@ private fun StatCard(
 
 // ── Feature Grid ─────────────────────────────────────────────────────────────
 @Composable
-private fun FeatureGrid(onNavigateToReminders: () -> Unit) {
+private fun FeatureGrid(
+    onNavigateToReminders: () -> Unit,
+    onNavigateToGroceries: () -> Unit,
+) {
     val features = listOf(
         FeatureTile(
             title = "Reminders",
@@ -113,6 +118,13 @@ private fun FeatureGrid(onNavigateToReminders: () -> Unit) {
             icon = Icons.Outlined.Notifications,
             enabled = true,
             onClick = onNavigateToReminders,
+        ),
+        FeatureTile(
+            title = "Groceries",
+            subtitle = "Track food\nexpiration",
+            icon = Icons.Outlined.ShoppingCart,
+            enabled = true,
+            onClick = onNavigateToGroceries,
         ),
         FeatureTile(
             title = "Tasks",
