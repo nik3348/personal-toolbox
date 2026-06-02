@@ -1,4 +1,4 @@
-rootProject.name = "greetingkmp"
+rootProject.name = "Toolbox"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 pluginManagement {
@@ -30,4 +30,3 @@ dependencyResolutionManagement {
 
 include(":androidApp")
 include(":sharedLogic")
-include(":sharedUI")
