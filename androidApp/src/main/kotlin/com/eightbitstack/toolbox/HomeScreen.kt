@@ -288,6 +288,59 @@ fun HomeScreen(
             }
         }
 
+        // Need to Buy (Shopping List)
+        item {
+            val uncheckedCount = state.shoppingList.count { !it.checked }
+            val uncheckedItems = state.shoppingList.filter { !it.checked }
+            DashWidget(
+                kicker = "Need to buy",
+                kickerColor = Color(0xFFEF4444),
+                countText = "$uncheckedCount item${if (uncheckedCount == 1) "" else "s"} left",
+                onOpen = { onNavigate("shopping") },
+                isEmpty = uncheckedItems.isEmpty(),
+                emptyMsg = "All bought! Shopping list is empty."
+            ) {
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        uncheckedItems.take(3).forEach { item ->
+                            Row(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(IntrinsicSize.Max)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(ToolboxTheme.bgSubtle)
+                                    .border(1.dp, ToolboxTheme.line, RoundedCornerShape(10.dp))
+                                    .padding(horizontal = 8.dp, vertical = 6.dp)
+                            ) {
+                                Column {
+                                    Text(
+                                        text = item.name,
+                                        fontFamily = ToolboxTheme.serif,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = ToolboxTheme.ink,
+                                        maxLines = 1
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "Qty: ${item.qty}",
+                                        fontFamily = ToolboxTheme.mono,
+                                        fontSize = 9.sp,
+                                        color = ToolboxTheme.inkMute
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // Tools grid
         item {
             Column(modifier = Modifier.fillMaxWidth()) {
@@ -320,12 +373,11 @@ fun HomeScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     ToolTile(
-                        label = "Notes",
-                        sub = "Coming next",
-                        color = ToolboxTheme.inkMute,
-                        tint = ToolboxTheme.bgSubtle,
-                        onClick = {},
-                        disabled = true,
+                        label = "Shopping List",
+                        sub = "${state.shoppingList.count { !it.checked }} items left",
+                        color = Color(0xFFEA580C),
+                        tint = Color(0xFFFFEDD5),
+                        onClick = { onNavigate("shopping") },
                         modifier = Modifier.weight(1f)
                     )
                     ToolTile(
@@ -409,7 +461,11 @@ fun ToolTile(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = if (label.contains("Fridge")) "❄" else "🔕",
+                    text = when {
+                        label.contains("Fridge") -> "❄"
+                        label.contains("List") -> "🛒"
+                        else -> "🔕"
+                    },
                     fontSize = 20.sp,
                     color = color
                 )

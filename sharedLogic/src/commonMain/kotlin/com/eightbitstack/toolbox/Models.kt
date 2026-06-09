@@ -18,9 +18,17 @@ data class FridgeItem(
     val location: String // "fridge", "freezer", "pantry"
 )
 
+data class ShoppingListItem(
+    val id: String,
+    val name: String,
+    val qty: String,
+    val checked: Boolean
+)
+
 data class ToolboxState(
     val quietHoursOn: Boolean,
     val reminders: List<Reminder>,
     val doneIds: List<String>,
-    val fridge: List<FridgeItem>
+    val fridge: List<FridgeItem>,
+    val shoppingList: List<ShoppingListItem> = emptyList()
 )

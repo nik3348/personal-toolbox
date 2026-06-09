@@ -15,6 +15,7 @@ class ToolboxRepositoryTest {
         assertEquals(1, state.doneIds.size)
         assertEquals("r2", state.doneIds.first())
         assertEquals(10, state.fridge.size)
+        assertEquals(4, state.shoppingList.size)
     }
 
     @Test
@@ -35,6 +36,38 @@ class ToolboxRepositoryTest {
         assertEquals("08:00", found.time)
         assertEquals("daily", found.repeat)
         assertEquals("banner", found.mode)
+    }
+
+    @Test
+    fun testShoppingListOperations() {
+        val repo = ToolboxRepository(MockStorage())
+        
+        // Add
+        repo.addShoppingItem("Apples", "6")
+        val apples = repo.state.shoppingList.firstOrNull { it.name == "Apples" }
+        assertTrue(apples != null)
+        assertEquals("6", apples.qty)
+        assertTrue(!apples.checked)
+
+        // Toggle
+        repo.toggleShoppingItem(apples.id)
+        assertTrue(repo.state.shoppingList.first { it.id == apples.id }.checked)
+
+        // Update
+        repo.updateShoppingItem(apples.id, "Organic Apples", "10")
+        val updatedApples = repo.state.shoppingList.first { it.id == apples.id }
+        assertEquals("Organic Apples", updatedApples.name)
+        assertEquals("10", updatedApples.qty)
+
+        // Purchase / Move to fridge
+        val originalFridgeSize = repo.state.fridge.size
+        repo.purchaseShoppingItem(apples.id, "fridge", "2026-06-15")
+        assertEquals(originalFridgeSize + 1, repo.state.fridge.size)
+        assertTrue(repo.state.fridge.any { it.name == "Organic Apples" && it.qty == "10" && it.location == "fridge" })
+
+        // Clear checked
+        repo.clearCheckedShoppingItems()
+        assertTrue(repo.state.shoppingList.none { it.id == apples.id })
     }
 
     @Test

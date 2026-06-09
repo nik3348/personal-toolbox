@@ -124,6 +124,22 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                             }
                         }
                     )
+                    "shopping" -> ShoppingListScreen(
+                        state = appState,
+                        onSaveItem = { id, name, qty ->
+                            if (id != null) {
+                                repository.updateShoppingItem(id, name, qty)
+                            } else {
+                                repository.addShoppingItem(name, qty)
+                            }
+                        },
+                        onToggleItem = { repository.toggleShoppingItem(it) },
+                        onDeleteItem = { repository.deleteShoppingItem(it) },
+                        onClearChecked = { repository.clearCheckedShoppingItems() },
+                        onPurchaseItem = { id, location, expiry ->
+                            repository.purchaseShoppingItem(id, location, expiry)
+                        }
+                    )
                     "me" -> MeScreen(
                         onReset = { repository.reset() },
                         accent = accent,
@@ -160,6 +176,7 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                         Triple("home", "Home", "🏠"),
                         Triple("reminders", "Quiet", "🔕"),
                         Triple("fridge", "Fridge", "❄"),
+                        Triple("shopping", "List", "🛒"),
                         Triple("me", "Me", "👤")
                     )
 

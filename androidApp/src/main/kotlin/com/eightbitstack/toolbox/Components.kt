@@ -13,20 +13,25 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -122,11 +127,13 @@ fun ChunkyButton(
         modifier = modifier
             .then(if (fullWidth) Modifier.fillMaxWidth() else Modifier.wrapContentWidth())
             .height(height)
-            .pointerInput(enabled) {
-                detectTapGestures(
-                    onTap = { if (enabled) onClick() }
-                )
-            }
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                enabled = enabled,
+                onClick = onClick
+            )
     ) {
         // Shadow (drawn underneath offset button)
         if (variant != "ghost" && enabled && shadowOffset > 0.dp) {
@@ -318,14 +325,27 @@ fun TextInput(
     onChange: (String) -> Unit,
     placeholder: String,
     modifier: Modifier = Modifier,
-    keyboardOptions: KeyboardOptions = KeyboardOptions.Default
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default
 ) {
     var isFocused by remember { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
+
     Box(
         modifier = modifier
-            .fillMaxWidth()
-            .border(1.5.dp, if (isFocused) ToolboxTheme.activePalette.primary else ToolboxTheme.line, RoundedCornerShape(10.dp))
+            .onFocusChanged { isFocused = it.isFocused }
+            .border(
+                1.5.dp,
+                if (isFocused) ToolboxTheme.activePalette.primary else ToolboxTheme.line,
+                RoundedCornerShape(10.dp)
+            )
             .background(ToolboxTheme.bg, RoundedCornerShape(10.dp))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) {
+                focusRequester.requestFocus()
+            }
             .padding(horizontal = 12.dp, vertical = 10.dp)
     ) {
         BasicTextField(
@@ -337,14 +357,20 @@ fun TextInput(
                 color = ToolboxTheme.ink
             ),
             keyboardOptions = keyboardOptions,
-            modifier = Modifier.fillMaxWidth(),
+            keyboardActions = keyboardActions,
+            singleLine = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(focusRequester),
             decorationBox = { innerTextField ->
                 if (value.isEmpty()) {
                     Text(
                         text = placeholder,
                         fontSize = 15.sp,
                         color = ToolboxTheme.inkMute,
-                        fontFamily = ToolboxTheme.sans
+                        fontFamily = ToolboxTheme.sans,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
                 innerTextField()
@@ -374,17 +400,19 @@ fun Sheet(
                 animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow)
             )
         } else {
+            // Smooth fluid close
             offsetY.animateTo(
-                targetValue = 1500f,
-                animationSpec = tween(durationMillis = 280)
+                targetValue = 2000f, 
+                animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
             )
             isRendered = false
         }
     }
 
-    if (!isRendered && offsetY.value >= 1500f) return
+    if (!isRendered && offsetY.value >= 1999f) return
 
-    val scrimAlpha = (1f - (offsetY.value / 1500f).coerceIn(0f, 1f)) * 0.4f
+    // Scrim disappears fluidly as sheet moves down
+    val scrimAlpha = (1f - (offsetY.value / 1000f).coerceIn(0f, 1f)) * 0.4f
 
     Box(
         modifier = modifier
@@ -392,10 +420,7 @@ fun Sheet(
             .background(Color(0xFF0F172A).copy(alpha = scrimAlpha))
             .pointerInput(Unit) {
                 detectTapGestures(onTap = {
-                    scope.launch {
-                        offsetY.animateTo(1500f, tween(250))
-                        onClose()
-                    }
+                    onClose()
                 })
             },
         contentAlignment = Alignment.BottomCenter
@@ -408,16 +433,19 @@ fun Sheet(
                 .pointerInput(Unit) {
                     detectDragGestures(
                         onDragEnd = {
-                            scope.launch {
-                                if (offsetY.value > 350f) {
-                                    offsetY.animateTo(1500f, tween(250))
-                                    onClose()
-                                } else {
+                            if (offsetY.value > 250f) {
+                                // Animate away fluidly for local feedback
+                                scope.launch {
+                                    offsetY.animateTo(2000f, spring(stiffness = Spring.StiffnessMediumLow))
+                                }
+                                onClose()
+                            } else {
+                                scope.launch {
                                     offsetY.animateTo(0f, spring(dampingRatio = Spring.DampingRatioNoBouncy))
                                 }
                             }
                         },
-                        onDrag = { change, dragAmount ->
+                        onDrag = { change: PointerInputChange, dragAmount: Offset ->
                             change.consume()
                             scope.launch {
                                 val newVal = (offsetY.value + dragAmount.y).coerceAtLeast(0f)

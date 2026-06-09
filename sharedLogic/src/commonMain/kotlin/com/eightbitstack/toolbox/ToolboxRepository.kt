@@ -109,12 +109,49 @@ class ToolboxRepository(private val storage: StorageProvider = KeyValueStorage()
         )
     }
 
+    fun toggleShoppingItem(id: String) {
+        val newList = state.shoppingList.map {
+            if (it.id == id) it.copy(checked = !it.checked) else it
+        }
+        state = state.copy(shoppingList = newList)
+    }
+
+    fun deleteShoppingItem(id: String) {
+        val newList = state.shoppingList.filter { it.id != id }
+        state = state.copy(shoppingList = newList)
+    }
+
+    fun updateShoppingItem(id: String, name: String, qty: String) {
+        val newList = state.shoppingList.map {
+            if (it.id == id) it.copy(name = name, qty = qty) else it
+        }
+        state = state.copy(shoppingList = newList)
+    }
+
+    fun addShoppingItem(name: String, qty: String) {
+        val id = "s_" + getUniqueId()
+        val item = ShoppingListItem(id, name, qty, checked = false)
+        state = state.copy(shoppingList = state.shoppingList + item)
+    }
+
+    fun clearCheckedShoppingItems() {
+        val newList = state.shoppingList.filter { !it.checked }
+        state = state.copy(shoppingList = newList)
+    }
+
+    fun purchaseShoppingItem(itemId: String, location: String, expiry: String) {
+        val item = state.shoppingList.firstOrNull { it.id == itemId } ?: return
+        addFridge(item.name, item.qty, expiry, location)
+        if (!item.checked) {
+            toggleShoppingItem(itemId)
+        }
+    }
+
     fun reset() {
         state = getSeedState()
     }
 
     // --- Persistence helper ---
-    
 
 
     private fun loadState(): ToolboxState {
@@ -167,6 +204,12 @@ class ToolboxRepository(private val storage: StorageProvider = KeyValueStorage()
                 FridgeItem("f8", "Cheddar", "~200 g", DateUtils.getTodayPlusDays(21), "fridge"),
                 FridgeItem("f9", "Frozen peas", "1 bag", DateUtils.getTodayPlusDays(60), "freezer"),
                 FridgeItem("f10", "Frozen berries", "1 bag", DateUtils.getTodayPlusDays(90), "freezer")
+            ),
+            shoppingList = listOf(
+                ShoppingListItem("s1", "Coffee beans", "1 bag", false),
+                ShoppingListItem("s2", "Avocados", "3", false),
+                ShoppingListItem("s3", "Bread", "1 loaf", false),
+                ShoppingListItem("s4", "Olive oil", "1 bottle", true)
             )
         )
     }
@@ -198,6 +241,13 @@ class ToolboxRepository(private val storage: StorageProvider = KeyValueStorage()
               .append(escape(f.expiry)).append("|")
               .append(escape(f.location)).append("\n")
         }
+        sb.append("[SHOPPING]\n")
+        for (sh in s.shoppingList) {
+            sb.append(escape(sh.id)).append("|")
+              .append(escape(sh.name)).append("|")
+              .append(escape(sh.qty)).append("|")
+              .append(sh.checked).append("\n")
+        }
         return sb.toString()
     }
 
@@ -206,6 +256,7 @@ class ToolboxRepository(private val storage: StorageProvider = KeyValueStorage()
         var doneIds = listOf<String>()
         val reminders = mutableListOf<Reminder>()
         val fridge = mutableListOf<FridgeItem>()
+        val shoppingList = mutableListOf<ShoppingListItem>()
 
         var section = ""
         val lines = raw.split("\n")
@@ -251,8 +302,20 @@ class ToolboxRepository(private val storage: StorageProvider = KeyValueStorage()
                         )
                     )
                 }
+            } else if (section == "[SHOPPING]") {
+                val parts = trimmed.split("|")
+                if (parts.size >= 4) {
+                    shoppingList.add(
+                        ShoppingListItem(
+                            id = unescape(parts[0]),
+                            name = unescape(parts[1]),
+                            qty = unescape(parts[2]),
+                            checked = parts[3].toBoolean()
+                        )
+                    )
+                }
             }
         }
-        return ToolboxState(quietHoursOn, reminders, doneIds, fridge)
+        return ToolboxState(quietHoursOn, reminders, doneIds, fridge, shoppingList)
     }
 }
