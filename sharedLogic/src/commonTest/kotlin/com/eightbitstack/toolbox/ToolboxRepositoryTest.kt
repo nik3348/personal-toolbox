@@ -71,6 +71,72 @@ class ToolboxRepositoryTest {
     }
 
     @Test
+    fun testPurchaseShoppingItemMarksChecked() {
+        val repo = ToolboxRepository(MockStorage())
+        repo.addShoppingItem("Lemons", "4")
+        val lemons = repo.state.shoppingList.first { it.name == "Lemons" }
+
+        repo.purchaseShoppingItem(lemons.id, "pantry", "2026-07-01")
+
+        assertTrue(repo.state.shoppingList.first { it.id == lemons.id }.checked)
+        assertTrue(repo.state.fridge.any { it.name == "Lemons" && it.location == "pantry" && it.expiry == "2026-07-01" })
+    }
+
+    @Test
+    fun testRestockFridgeItem() {
+        val repo = ToolboxRepository(MockStorage())
+        repo.addFridge("Hummus", "1 tub", "2026-06-20", "fridge")
+        val hummus = repo.state.fridge.first { it.name == "Hummus" }
+
+        repo.restockFridgeItem(hummus.id)
+
+        assertTrue(repo.state.fridge.none { it.id == hummus.id })
+        val listed = repo.state.shoppingList.first { it.name == "Hummus" }
+        assertEquals("1 tub", listed.qty)
+        assertTrue(!listed.checked)
+    }
+
+    @Test
+    fun testRestockSkipsDuplicateAlreadyOnList() {
+        val repo = ToolboxRepository(MockStorage())
+        repo.addShoppingItem("Hummus", "2 tubs")
+        repo.addFridge("hummus", "1 tub", "2026-06-20", "fridge")
+        val fridgeItem = repo.state.fridge.first { it.name == "hummus" }
+
+        repo.restockFridgeItem(fridgeItem.id)
+
+        assertTrue(repo.state.fridge.none { it.id == fridgeItem.id })
+        assertEquals(1, repo.state.shoppingList.count { it.name.equals("hummus", ignoreCase = true) })
+    }
+
+    @Test
+    fun testSerializationRoundTripWithSpecialCharacters() {
+        val storage = MockStorage()
+        val repo = ToolboxRepository(storage)
+        repo.addShoppingItem("Salt | pepper \\ mix", "1")
+        repo.addFridge("Multi\nline", "2", "2026-06-20", "pantry")
+        repo.addReminder("Pipes | and \\ slashes", "07:15", "weekly", "badge")
+
+        val repo2 = ToolboxRepository(storage)
+
+        assertTrue(repo2.state.shoppingList.any { it.name == "Salt | pepper \\ mix" })
+        assertTrue(repo2.state.fridge.any { it.name == "Multi\nline" && it.location == "pantry" })
+        val reminder = repo2.state.reminders.first { it.title == "Pipes | and \\ slashes" }
+        assertEquals("07:15", reminder.time)
+        assertEquals("weekly", reminder.repeat)
+    }
+
+    @Test
+    fun testGarbageStorageDoesNotCrash() {
+        val storage = MockStorage()
+        storage.saveString("toolbox-state-v1", "not a valid state\n[GARBAGE]\n???|x")
+        val repo = ToolboxRepository(storage)
+        // Lenient parser skips unparseable lines rather than throwing
+        assertTrue(repo.state.reminders.isEmpty())
+        assertTrue(repo.state.quietHoursOn)
+    }
+
+    @Test
     fun testPersistence() {
         val storage = MockStorage()
         val repo = ToolboxRepository(storage)
