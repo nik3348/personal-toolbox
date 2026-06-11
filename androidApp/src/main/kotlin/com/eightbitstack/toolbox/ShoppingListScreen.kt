@@ -62,7 +62,7 @@ fun ShoppingListScreen(
                         verticalAlignment = Alignment.Bottom
                     ) {
                         Column {
-                            Kicker(text = kickerText, color = Color(0xFF16A34A))
+                            Kicker(text = kickerText, color = ToolboxTheme.shoppingAccent)
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = "Shopping",

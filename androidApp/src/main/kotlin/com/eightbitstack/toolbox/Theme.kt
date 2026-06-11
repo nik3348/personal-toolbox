@@ -93,6 +93,28 @@ object ToolboxTheme {
     val pink = Color(0xFFFF00FF)
     val cyan = Color(0xFF00BFFF)
 
+    // Per-tool accents
+    val fridgeAccent: Color
+        @Composable
+        get() = if (LocalDarkMode.current) Color(0xFF22D3EE) else Color(0xFF0891B2)
+
+    val fridgeTint: Color
+        @Composable
+        get() = if (LocalDarkMode.current) Color(0xFF0891B2).copy(alpha = 0.15f) else Color(0xFFECFEFF)
+
+    val shoppingAccent: Color
+        @Composable
+        get() = if (LocalDarkMode.current) Color(0xFF4ADE80) else Color(0xFF16A34A)
+
+    val shoppingTint: Color
+        @Composable
+        get() = if (LocalDarkMode.current) Color(0xFF16A34A).copy(alpha = 0.15f) else Color(0xFFDCFCE7)
+
+    // Inactive switch tracks and similar solid control surfaces
+    val control: Color
+        @Composable
+        get() = if (LocalDarkMode.current) Color(0xFF334155) else Color(0xFFE2E8F0)
+
     val activePalette: BrandPalette
         @Composable
         @ReadOnlyComposable

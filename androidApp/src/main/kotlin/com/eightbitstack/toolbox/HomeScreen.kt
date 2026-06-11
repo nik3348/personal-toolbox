@@ -299,7 +299,7 @@ fun HomeScreen(
                 "$uncheckedCount left"
             DashWidget(
                 kicker = "Shopping list",
-                kickerColor = Color(0xFF16A34A),
+                kickerColor = ToolboxTheme.shoppingAccent,
                 countText = countLabel,
                 onOpen = { onNavigate("shopping") },
                 isEmpty = state.shoppingList.isEmpty(),
@@ -379,8 +379,8 @@ fun HomeScreen(
                     ToolTile(
                         label = "Fridge",
                         sub = "${state.fridge.size} items",
-                        color = Color(0xFF0891B2),
-                        tint = Color(0xFFECFEFF),
+                        color = ToolboxTheme.fridgeAccent,
+                        tint = ToolboxTheme.fridgeTint,
                         onClick = { onNavigate("fridge") },
                         modifier = Modifier.weight(1f)
                     )
@@ -393,8 +393,8 @@ fun HomeScreen(
                     ToolTile(
                         label = "Shopping",
                         sub = "${state.shoppingList.count { !it.checked }} items left",
-                        color = Color(0xFF16A34A),
-                        tint = Color(0xFFDCFCE7),
+                        color = ToolboxTheme.shoppingAccent,
+                        tint = ToolboxTheme.shoppingTint,
                         onClick = { onNavigate("shopping") },
                         modifier = Modifier.weight(1f)
                     )

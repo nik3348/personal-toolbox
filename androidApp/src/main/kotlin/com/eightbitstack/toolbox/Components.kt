@@ -211,7 +211,7 @@ fun Toggle(
         modifier = modifier
             .size(W, H)
             .clip(RoundedCornerShape(H))
-            .background(if (value) palette.primary else Color(0xFFE2E8F0))
+            .background(if (value) palette.primary else ToolboxTheme.control)
             .clickable { onChange(!value) }
             .padding(2.dp)
     ) {
@@ -468,7 +468,7 @@ fun Sheet(
                     modifier = Modifier
                         .size(36.dp, 4.dp)
                         .clip(RoundedCornerShape(999.dp))
-                        .background(Color(0xFFCBD5E1))
+                        .background(if (LocalDarkMode.current) Color(0xFF475569) else Color(0xFFCBD5E1))
                         .align(Alignment.CenterHorizontally)
                 )
                 Spacer(modifier = Modifier.height(14.dp))
