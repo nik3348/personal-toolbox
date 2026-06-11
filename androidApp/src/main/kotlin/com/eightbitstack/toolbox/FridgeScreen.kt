@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.IntrinsicSize
 fun FridgeScreen(
     state: ToolboxState,
     onConsume: (String) -> Unit,
+    onRestock: (String) -> Unit,
     onNudge: (String) -> Unit,
     onSaveItem: (id: String?, name: String, qty: String, expiry: String, location: String) -> Unit
 ) {
@@ -135,6 +136,10 @@ fun FridgeScreen(
                                     expandedId = null
                                     onConsume(item.id)
                                 },
+                                onRestock = {
+                                    expandedId = null
+                                    onRestock(item.id)
+                                },
                                 onNudge = {
                                     expandedId = null
                                     onNudge(item.name)
@@ -195,6 +200,7 @@ fun FridgeRow(
     onExpand: () -> Unit,
     onUsed: () -> Unit,
     onToss: () -> Unit,
+    onRestock: () -> Unit,
     onNudge: () -> Unit,
     onEdit: () -> Unit
 ) {
@@ -307,6 +313,20 @@ fun FridgeRow(
                             variant = "outline",
                             size = "sm"
                         )
+                        ChunkyButton(
+                            onClick = onRestock,
+                            text = "Restock",
+                            variant = "outline",
+                            size = "sm",
+                            icon = { Text("🛒", fontSize = 12.sp) }
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         ChunkyButton(
                             onClick = onNudge,
                             text = "Nudge me",

@@ -139,12 +139,22 @@ class ToolboxRepository(private val storage: StorageProvider = KeyValueStorage()
         state = state.copy(shoppingList = newList)
     }
 
+    fun restockFridgeItem(id: String) {
+        val item = state.fridge.firstOrNull { it.id == id } ?: return
+        val alreadyListed = state.shoppingList.any { !it.checked && it.name.equals(item.name, ignoreCase = true) }
+        val newList = if (alreadyListed) {
+            state.shoppingList
+        } else {
+            state.shoppingList + ShoppingListItem("s_" + getUniqueId(), item.name, item.qty, checked = false)
+        }
+        state = state.copy(fridge = state.fridge.filter { it.id != id }, shoppingList = newList)
+    }
+
     fun purchaseShoppingItem(itemId: String, location: String, expiry: String) {
         val item = state.shoppingList.firstOrNull { it.id == itemId } ?: return
-        addFridge(item.name, item.qty, expiry, location)
-        if (!item.checked) {
-            toggleShoppingItem(itemId)
-        }
+        val newFridge = state.fridge + FridgeItem("f_" + getUniqueId(), item.name, item.qty, expiry, location)
+        val newList = state.shoppingList.map { if (it.id == itemId) it.copy(checked = true) else it }
+        state = state.copy(fridge = newFridge, shoppingList = newList)
     }
 
     fun reset() {

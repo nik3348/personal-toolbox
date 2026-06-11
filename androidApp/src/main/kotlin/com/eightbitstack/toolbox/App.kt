@@ -115,6 +115,7 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                     "fridge" -> FridgeScreen(
                         state = appState,
                         onConsume = { repository.consumeFridge(it) },
+                        onRestock = { repository.restockFridgeItem(it) },
                         onNudge = { repository.nudgeFromFridge(it) },
                         onSaveItem = { id, name, qty, expiry, location ->
                             if (id != null) {
