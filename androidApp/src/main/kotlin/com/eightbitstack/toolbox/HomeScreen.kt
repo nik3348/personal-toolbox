@@ -288,53 +288,71 @@ fun HomeScreen(
             }
         }
 
-        // Need to Buy (Shopping List)
+        // Shopping List widget
         item {
             val uncheckedCount = state.shoppingList.count { !it.checked }
+            val checkedCount = state.shoppingList.count { it.checked }
             val uncheckedItems = state.shoppingList.filter { !it.checked }
+            val countLabel = if (uncheckedCount == 0 && checkedCount > 0)
+                "All $checkedCount in cart ✓"
+            else
+                "$uncheckedCount left"
             DashWidget(
-                kicker = "Need to buy",
-                kickerColor = Color(0xFFEF4444),
-                countText = "$uncheckedCount item${if (uncheckedCount == 1) "" else "s"} left",
+                kicker = "Shopping list",
+                kickerColor = Color(0xFF16A34A),
+                countText = countLabel,
                 onOpen = { onNavigate("shopping") },
-                isEmpty = uncheckedItems.isEmpty(),
-                emptyMsg = "All bought! Shopping list is empty."
+                isEmpty = state.shoppingList.isEmpty(),
+                emptyMsg = "List is empty. Tap to add items."
             ) {
                 Column {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
+                    if (uncheckedCount == 0 && checkedCount > 0) {
+                        Text(
+                            text = "All $checkedCount items in cart ✓",
+                            fontSize = 13.sp,
+                            color = ToolboxTheme.inkMute,
+                            modifier = Modifier.padding(top = 6.dp)
+                        )
+                    } else {
                         uncheckedItems.take(3).forEach { item ->
                             Row(
+                                verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier
-                                    .weight(1f)
-                                    .height(IntrinsicSize.Max)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(ToolboxTheme.bgSubtle)
-                                    .border(1.dp, ToolboxTheme.line, RoundedCornerShape(10.dp))
-                                    .padding(horizontal = 8.dp, vertical = 6.dp)
+                                    .fillMaxWidth()
+                                    .padding(vertical = 7.dp)
                             ) {
-                                Column {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .border(1.5.dp, ToolboxTheme.inkMute, CircleShape)
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = item.name,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = ToolboxTheme.ink,
+                                    modifier = Modifier.weight(1f),
+                                    maxLines = 1
+                                )
+                                if (item.qty.isNotEmpty()) {
                                     Text(
-                                        text = item.name,
-                                        fontFamily = ToolboxTheme.serif,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = ToolboxTheme.ink,
-                                        maxLines = 1
-                                    )
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = "Qty: ${item.qty}",
+                                        text = item.qty,
                                         fontFamily = ToolboxTheme.mono,
-                                        fontSize = 9.sp,
+                                        fontSize = 10.sp,
                                         color = ToolboxTheme.inkMute
                                     )
                                 }
                             }
+                        }
+                        if (uncheckedItems.size > 3) {
+                            Text(
+                                text = "+ ${uncheckedItems.size - 3} more",
+                                fontSize = 12.sp,
+                                color = ToolboxTheme.inkMute,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
                         }
                     }
                 }
@@ -373,10 +391,10 @@ fun HomeScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     ToolTile(
-                        label = "Shopping List",
+                        label = "Shopping",
                         sub = "${state.shoppingList.count { !it.checked }} items left",
-                        color = Color(0xFFEA580C),
-                        tint = Color(0xFFFFEDD5),
+                        color = Color(0xFF16A34A),
+                        tint = Color(0xFFDCFCE7),
                         onClick = { onNavigate("shopping") },
                         modifier = Modifier.weight(1f)
                     )
