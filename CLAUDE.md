@@ -16,6 +16,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 # Run iOS simulator tests (requires macOS + Xcode)
 ./gradlew :sharedLogic:iosSimulatorArm64Test
+
+# Build the iOS app (compiles the SharedLogic framework via Gradle)
+cd iosApp && xcodebuild -project iosApp.xcodeproj -scheme iosApp -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 17' build
 ```
 
 ## Architecture
@@ -24,6 +27,8 @@ This is a Kotlin Multiplatform (KMP) project with two modules:
 
 - **`androidApp`** — Android-only UI. All screens are Jetpack Compose. No ViewModel layer; state flows directly from `ToolboxRepository` via a listener callback (`onStateChanged`).
 - **`sharedLogic`** — KMP library shared between Android and iOS. Contains models, business logic, storage abstraction, and date utilities.
+
+There is also **`iosApp/`** (an Xcode project, not a Gradle module): a SwiftUI app whose screens live in `ContentView.swift`. It consumes the `SharedLogic` framework directly; `ToolboxObservableState` wraps `ToolboxRepository` as an `ObservableObject` and mirrors the Android listener pattern.
 
 ### State management
 
