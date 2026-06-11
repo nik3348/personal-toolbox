@@ -88,10 +88,10 @@ class ToolboxObservableState: ObservableObject, ToolboxRepositoryListener {
     func setMode(id: String, mode: String) { repo.setMode(id: id, mode: mode) }
     func deleteReminder(id: String) { repo.deleteReminder(id: id) }
     func updateReminder(id: String, title: String, time: String, repeat: String, mode: String) {
-        repo.updateReminder(id: id, title: title, time: time, repeat: repeat, mode: mode)
+        repo.updateReminder(id: id, title: title, time: time, repeat: `repeat`, mode: mode)
     }
     func addReminder(title: String, time: String, repeat: String, mode: String) {
-        repo.addReminder(title: title, time: time, repeat: repeat, mode: mode)
+        repo.addReminder(title: title, time: time, repeat: `repeat`, mode: mode)
     }
     func consumeFridge(id: String) { repo.consumeFridge(id: id) }
     func updateFridge(id: String, name: String, qty: String, expiry: String, location: String) {
@@ -101,6 +101,17 @@ class ToolboxObservableState: ObservableObject, ToolboxRepositoryListener {
         repo.addFridge(name: name, qty: qty, expiry: expiry, location: location)
     }
     func nudgeFromFridge(name: String) { repo.nudgeFromFridge(itemName: name) }
+    func restockFridgeItem(id: String) { repo.restockFridgeItem(id: id) }
+    func toggleShoppingItem(id: String) { repo.toggleShoppingItem(id: id) }
+    func deleteShoppingItem(id: String) { repo.deleteShoppingItem(id: id) }
+    func updateShoppingItem(id: String, name: String, qty: String) {
+        repo.updateShoppingItem(id: id, name: name, qty: qty)
+    }
+    func addShoppingItem(name: String, qty: String) { repo.addShoppingItem(name: name, qty: qty) }
+    func clearCheckedShoppingItems() { repo.clearCheckedShoppingItems() }
+    func purchaseShoppingItem(id: String, location: String, expiry: String) {
+        repo.purchaseShoppingItem(itemId: id, location: location, expiry: expiry)
+    }
     func reset() { repo.reset() }
     func setQuiet(on: Bool) { repo.setQuiet(on: on) }
 }
@@ -131,6 +142,8 @@ struct ContentView: View {
                         SwiftRemindersScreen(store: store, palette: currentPalette)
                     } else if activeTab == "fridge" {
                         SwiftFridgeScreen(store: store, palette: currentPalette)
+                    } else if activeTab == "shopping" {
+                        SwiftShoppingScreen(store: store, palette: currentPalette)
                     } else if activeTab == "me" {
                         SwiftMeScreen(
                             store: store,
@@ -228,6 +241,7 @@ struct SwiftTabBar: View {
             tabButton(id: "home", label: "Home", icon: "house.fill")
             tabButton(id: "reminders", label: "Quiet", icon: "bell.slash.fill")
             tabButton(id: "fridge", label: "Fridge", icon: "thermometer.snowflake")
+            tabButton(id: "shopping", label: "List", icon: "cart.fill")
             tabButton(id: "me", label: "Me", icon: "person.fill")
         }
         .padding(.horizontal, 10)
@@ -390,6 +404,11 @@ struct SwiftFridgeScreen: View {
                         Spacer()
                         Text(item.expiry)
                             .font(.system(.body, design: .monospaced))
+                        Button(action: { store.restockFridgeItem(id: item.id) }) {
+                            Image(systemName: "cart.badge.plus")
+                                .foregroundColor(palette.primary)
+                        }
+                        .buttonStyle(PlainButtonStyle())
                     }
                     .padding()
                     .background(Color.white)
@@ -398,6 +417,114 @@ struct SwiftFridgeScreen: View {
             }
             .padding(.horizontal)
         }
+    }
+}
+
+struct SwiftShoppingScreen: View {
+    @ObservedObject var store: ToolboxObservableState
+    let palette: SwiftBrandPalette
+
+    @State private var newName = ""
+    @State private var newQty = ""
+
+    var uncheckedItems: [ShoppingListItem] {
+        store.state.shoppingList.filter { !$0.checked }
+    }
+    var checkedItems: [ShoppingListItem] {
+        store.state.shoppingList.filter { $0.checked }
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Shopping List")
+                    .font(.title)
+                    .fontWeight(.bold)
+
+                // Add item row
+                HStack {
+                    TextField("Item", text: $newName)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                    TextField("Qty", text: $newQty)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .frame(width: 70)
+                    Button(action: {
+                        let name = newName.trimmingCharacters(in: .whitespaces)
+                        guard !name.isEmpty else { return }
+                        store.addShoppingItem(name: name, qty: newQty.isEmpty ? "1" : newQty)
+                        newName = ""
+                        newQty = ""
+                    }) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(palette.primary)
+                    }
+                }
+
+                ForEach(uncheckedItems, id: \.id) { item in
+                    shoppingRow(item)
+                }
+
+                if !checkedItems.isEmpty {
+                    HStack {
+                        Text("IN CART")
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundColor(SwiftTheme.inkMute)
+                        Spacer()
+                        Button("Clear") { store.clearCheckedShoppingItems() }
+                            .font(.caption)
+                            .foregroundColor(SwiftTheme.danger)
+                    }
+                    ForEach(checkedItems, id: \.id) { item in
+                        shoppingRow(item)
+                    }
+                }
+            }
+            .padding(.horizontal)
+        }
+    }
+
+    func shoppingRow(_ item: ShoppingListItem) -> some View {
+        HStack {
+            Button(action: { store.toggleShoppingItem(id: item.id) }) {
+                Image(systemName: item.checked ? "checkmark.circle.fill" : "circle")
+                    .foregroundColor(item.checked ? SwiftTheme.ok : SwiftTheme.inkMute)
+            }
+            .buttonStyle(PlainButtonStyle())
+            VStack(alignment: .leading) {
+                Text(item.name)
+                    .fontWeight(.semibold)
+                    .strikethrough(item.checked)
+                    .foregroundColor(item.checked ? SwiftTheme.inkMute : SwiftTheme.ink)
+                if !item.qty.isEmpty {
+                    Text(item.qty)
+                        .font(.caption)
+                        .foregroundColor(SwiftTheme.inkMute)
+                }
+            }
+            Spacer()
+            if item.checked {
+                Button(action: {
+                    store.purchaseShoppingItem(
+                        id: item.id,
+                        location: "fridge",
+                        expiry: DateUtils.shared.getTodayPlusDays(days: 7)
+                    )
+                }) {
+                    Image(systemName: "snowflake")
+                        .foregroundColor(SwiftTheme.cyan)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+            Button(action: { store.deleteShoppingItem(id: item.id) }) {
+                Image(systemName: "trash")
+                    .foregroundColor(SwiftTheme.danger)
+            }
+            .buttonStyle(PlainButtonStyle())
+        }
+        .padding()
+        .background(Color.white)
+        .cornerRadius(14)
     }
 }
 
