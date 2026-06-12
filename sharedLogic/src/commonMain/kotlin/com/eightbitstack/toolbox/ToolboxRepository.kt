@@ -163,6 +163,34 @@ class ToolboxRepository(private val storage: StorageProvider = KeyValueStorage()
         state = state.copy(fridge = newFridge, shoppingList = state.shoppingList.filter { !it.checked })
     }
 
+    fun addRecipe(name: String, ingredients: List<RecipeIngredient>, steps: List<String>) {
+        val id = "rc_" + getUniqueId()
+        val recipe = Recipe(id, name, ingredients, steps)
+        state = state.copy(recipes = state.recipes + recipe)
+    }
+
+    fun updateRecipe(id: String, name: String, ingredients: List<RecipeIngredient>, steps: List<String>) {
+        val newRecipes = state.recipes.map {
+            if (it.id == id) it.copy(name = name, ingredients = ingredients, steps = steps) else it
+        }
+        state = state.copy(recipes = newRecipes)
+    }
+
+    fun deleteRecipe(id: String) {
+        state = state.copy(recipes = state.recipes.filter { it.id != id })
+    }
+
+    fun sendRecipeToShoppingList(id: String) {
+        val recipe = state.recipes.firstOrNull { it.id == id } ?: return
+        val missing = recipe.ingredients.filter { ing ->
+            state.fridge.none { it.name.equals(ing.name, ignoreCase = true) } &&
+                state.shoppingList.none { !it.checked && it.name.equals(ing.name, ignoreCase = true) }
+        }
+        if (missing.isEmpty()) return
+        val newItems = missing.map { ShoppingListItem("s_" + getUniqueId(), it.name, it.qty.ifEmpty { "1" }, checked = false) }
+        state = state.copy(shoppingList = state.shoppingList + newItems)
+    }
+
     fun setAccent(accent: String) {
         state = state.copy(settings = state.settings.copy(accent = accent))
     }
@@ -243,6 +271,37 @@ class ToolboxRepository(private val storage: StorageProvider = KeyValueStorage()
                 ShoppingListItem("s2", "Avocados", "3", false),
                 ShoppingListItem("s3", "Bread", "1 loaf", false),
                 ShoppingListItem("s4", "Olive oil", "1 bottle", true)
+            ),
+            recipes = listOf(
+                Recipe(
+                    id = "rc1",
+                    name = "Tofu scramble",
+                    ingredients = listOf(
+                        RecipeIngredient("Tofu", "1 block"),
+                        RecipeIngredient("Kale", "2 handfuls"),
+                        RecipeIngredient("Salsa verde", "2 tbsp")
+                    ),
+                    steps = listOf(
+                        "Press the tofu for 10 minutes, then crumble it into a bowl.",
+                        "Sauté the kale in a little oil until it softens.",
+                        "Add the tofu and cook for 5 minutes, stirring now and then.",
+                        "Stir through the salsa verde and serve hot."
+                    )
+                ),
+                Recipe(
+                    id = "rc2",
+                    name = "Berry yogurt bowl",
+                    ingredients = listOf(
+                        RecipeIngredient("Yogurt", "1 cup"),
+                        RecipeIngredient("Frozen berries", "1 handful"),
+                        RecipeIngredient("Bread", "1 slice, toasted")
+                    ),
+                    steps = listOf(
+                        "Thaw the berries for a few minutes or microwave for 30 seconds.",
+                        "Spoon the yogurt into a bowl and top with the berries.",
+                        "Serve with the toast on the side."
+                    )
+                )
             )
         )
     }
@@ -285,6 +344,18 @@ class ToolboxRepository(private val storage: StorageProvider = KeyValueStorage()
               .append(escape(sh.qty)).append("|")
               .append(sh.checked).append("\n")
         }
+        sb.append("[RECIPES]\n")
+        // Each recipe is a multi-line record: an R header line followed by
+        // its I (ingredient) and S (step) lines, until the next R line
+        for (rc in s.recipes) {
+            sb.append("R|").append(escape(rc.id)).append("|").append(escape(rc.name)).append("\n")
+            for (ing in rc.ingredients) {
+                sb.append("I|").append(escape(ing.name)).append("|").append(escape(ing.qty)).append("\n")
+            }
+            for (step in rc.steps) {
+                sb.append("S|").append(escape(step)).append("\n")
+            }
+        }
         return sb.toString()
     }
 
@@ -295,6 +366,7 @@ class ToolboxRepository(private val storage: StorageProvider = KeyValueStorage()
         val reminders = mutableListOf<Reminder>()
         val fridge = mutableListOf<FridgeItem>()
         val shoppingList = mutableListOf<ShoppingListItem>()
+        val recipes = mutableListOf<Recipe>()
 
         var section = ""
         val lines = raw.split("\n")
@@ -360,8 +432,30 @@ class ToolboxRepository(private val storage: StorageProvider = KeyValueStorage()
                         )
                     )
                 }
+            } else if (section == "[RECIPES]") {
+                val parts = trimmed.split("|")
+                when {
+                    parts[0] == "R" && parts.size >= 3 -> recipes.add(
+                        Recipe(
+                            id = unescape(parts[1]),
+                            name = unescape(parts[2]),
+                            ingredients = emptyList(),
+                            steps = emptyList()
+                        )
+                    )
+                    parts[0] == "I" && parts.size >= 3 && recipes.isNotEmpty() -> {
+                        val last = recipes.last()
+                        recipes[recipes.lastIndex] = last.copy(
+                            ingredients = last.ingredients + RecipeIngredient(unescape(parts[1]), unescape(parts[2]))
+                        )
+                    }
+                    parts[0] == "S" && parts.size >= 2 && recipes.isNotEmpty() -> {
+                        val last = recipes.last()
+                        recipes[recipes.lastIndex] = last.copy(steps = last.steps + unescape(parts[1]))
+                    }
+                }
             }
         }
-        return ToolboxState(quietHoursOn, reminders, doneIds, fridge, shoppingList, settings)
+        return ToolboxState(quietHoursOn, reminders, doneIds, fridge, shoppingList, recipes, settings)
     }
 }

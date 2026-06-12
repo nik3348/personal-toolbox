@@ -174,6 +174,72 @@ class ToolboxRepositoryTest {
     }
 
     @Test
+    fun testRecipeOperations() {
+        val repo = ToolboxRepository(MockStorage())
+
+        repo.addRecipe(
+            "Pasta",
+            listOf(RecipeIngredient("Spaghetti", "200 g"), RecipeIngredient("Garlic", "2 cloves")),
+            listOf("Boil the pasta.", "Fry the garlic and toss together.")
+        )
+        val pasta = repo.state.recipes.first { it.name == "Pasta" }
+        assertEquals(2, pasta.ingredients.size)
+        assertEquals(2, pasta.steps.size)
+
+        repo.updateRecipe(
+            pasta.id,
+            "Garlic pasta",
+            pasta.ingredients + RecipeIngredient("Chilli flakes", "1 pinch"),
+            pasta.steps
+        )
+        val updated = repo.state.recipes.first { it.id == pasta.id }
+        assertEquals("Garlic pasta", updated.name)
+        assertEquals(3, updated.ingredients.size)
+
+        repo.deleteRecipe(pasta.id)
+        assertTrue(repo.state.recipes.none { it.id == pasta.id })
+    }
+
+    @Test
+    fun testRecipeSerializationRoundTrip() {
+        val storage = MockStorage()
+        val repo = ToolboxRepository(storage)
+        repo.addRecipe(
+            "Tricky | recipe \\ name",
+            listOf(RecipeIngredient("Salt | flakes", "1 tsp")),
+            listOf("Step with | pipe", "Step with\nnewline")
+        )
+
+        val repo2 = ToolboxRepository(storage)
+
+        val recipe = repo2.state.recipes.first { it.name == "Tricky | recipe \\ name" }
+        assertEquals(RecipeIngredient("Salt | flakes", "1 tsp"), recipe.ingredients.single())
+        assertEquals(listOf("Step with | pipe", "Step with\nnewline"), recipe.steps)
+    }
+
+    @Test
+    fun testSendRecipeToShoppingListOnlyAddsMissing() {
+        val repo = ToolboxRepository(MockStorage())
+        // "Tofu" is already in the seeded fridge; "Coffee beans" is on the list
+        repo.addRecipe(
+            "Test meal",
+            listOf(
+                RecipeIngredient("Tofu", "1 block"),
+                RecipeIngredient("Coffee beans", "1 bag"),
+                RecipeIngredient("Coconut milk", "1 can")
+            ),
+            listOf("Cook it.")
+        )
+        val recipe = repo.state.recipes.first { it.name == "Test meal" }
+        val sizeBefore = repo.state.shoppingList.size
+
+        repo.sendRecipeToShoppingList(recipe.id)
+
+        assertEquals(sizeBefore + 1, repo.state.shoppingList.size)
+        assertTrue(repo.state.shoppingList.any { it.name == "Coconut milk" && !it.checked })
+    }
+
+    @Test
     fun testGarbageStorageDoesNotCrash() {
         val storage = MockStorage()
         storage.saveString("toolbox-state-v1", "not a valid state\n[GARBAGE]\n???|x")

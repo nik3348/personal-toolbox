@@ -46,8 +46,7 @@ fun ShoppingListScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
-                .imePadding(),
+                .statusBarsPadding(),
             contentPadding = PaddingValues(top = 10.dp, bottom = 140.dp),
             verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
@@ -139,7 +138,6 @@ fun ShoppingListScreen(
                                         isLast = isLast,
                                         onExpand = { expandedId = if (expanded) null else item.id },
                                         onToggle = {
-                                            expandedId = null
                                             onToggleItem(item.id)
                                         },
                                         onEdit = {
