@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -33,7 +34,7 @@ fun RecipesScreen(
     var editFor by remember { mutableStateOf<Recipe?>(null) }
     var detailFor by remember { mutableStateOf<Recipe?>(null) }
 
-    val recipes = state.recipes.sortedBy { it.name.lowercase() }
+    val recipes = remember(state.recipes) { state.recipes.sortedBy { it.name.lowercase() } }
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
@@ -62,38 +63,36 @@ fun RecipesScreen(
                 }
             }
 
-            item {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    if (recipes.isEmpty()) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 40.dp)
-                                .border(1.5.dp, ToolboxTheme.line, RoundedCornerShape(14.dp))
-                                .padding(16.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "No recipes yet. Tap + to save your first one.",
-                                color = ToolboxTheme.inkMute,
-                                fontSize = 13.sp
-                            )
-                        }
-                    } else {
-                        recipes.forEach { recipe ->
-                            RecipeCard(
-                                recipe = recipe,
-                                onOpen = {
-                                    detailFor = recipe
-                                    detailSheetOpen = true
-                                }
-                            )
-                        }
+            if (recipes.isEmpty()) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 40.dp)
+                            .border(1.5.dp, ToolboxTheme.line, RoundedCornerShape(14.dp))
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No recipes yet. Tap + to save your first one.",
+                            color = ToolboxTheme.inkMute,
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+            } else {
+                items(
+                    items = recipes,
+                    key = { it.id }
+                ) { recipe ->
+                    Box(modifier = Modifier.padding(horizontal = 8.dp)) {
+                        RecipeCard(
+                            recipe = recipe,
+                            onOpen = {
+                                detailFor = recipe
+                                detailSheetOpen = true
+                            }
+                        )
                     }
                 }
             }
@@ -307,23 +306,27 @@ fun RecipeForm(
     onSave: (name: String, ingredients: List<RecipeIngredient>, steps: List<String>) -> Unit,
     onCancel: () -> Unit
 ) {
-    var name by remember { mutableStateOf(initial?.name ?: "") }
-    // Editable rows; blank rows are dropped on save
-    var ingNames = remember { mutableStateListOf<String>() }
-    var ingQtys = remember { mutableStateListOf<String>() }
-    var steps = remember { mutableStateListOf<String>() }
-
-    LaunchedEffect(initial) {
-        ingNames.clear(); ingQtys.clear(); steps.clear()
-        if (initial != null) {
-            initial.ingredients.forEach { ingNames.add(it.name); ingQtys.add(it.qty) }
-            steps.addAll(initial.steps)
+    var name by remember(initial) { mutableStateOf(initial?.name ?: "") }
+    val ingredients = remember(initial) {
+        mutableStateListOf<RecipeIngredient>().apply {
+            if (initial != null) {
+                addAll(initial.ingredients)
+            } else {
+                add(RecipeIngredient("", ""))
+            }
         }
-        if (ingNames.isEmpty()) { ingNames.add(""); ingQtys.add("") }
-        if (steps.isEmpty()) steps.add("")
+    }
+    val steps = remember(initial) {
+        mutableStateListOf<String>().apply {
+            if (initial != null) {
+                addAll(initial.steps)
+            } else {
+                add("")
+            }
+        }
     }
 
-    val canSave = name.trim().isNotEmpty() && ingNames.any { it.trim().isNotEmpty() }
+    val canSave = name.trim().isNotEmpty() && ingredients.any { it.name.trim().isNotEmpty() }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -342,43 +345,43 @@ fun RecipeForm(
 
             Field(label = "Ingredients") {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    ingNames.forEachIndexed { index, ingName ->
+                    ingredients.forEachIndexed { index, ingredient ->
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             TextInput(
-                                value = ingName,
-                                onChange = { ingNames[index] = it },
+                                value = ingredient.name,
+                                onChange = { ingredients[index] = ingredient.copy(name = it) },
                                 placeholder = "Spaghetti",
                                 modifier = Modifier.weight(1.6f)
                             )
                             TextInput(
-                                value = ingQtys[index],
-                                onChange = { ingQtys[index] = it },
+                                value = ingredient.qty,
+                                onChange = { ingredients[index] = ingredient.copy(qty = it) },
                                 placeholder = "200 g",
                                 modifier = Modifier.weight(1f)
                             )
-                            Text(
-                                text = "✕",
-                                fontSize = 14.sp,
-                                color = ToolboxTheme.inkMute,
+                            Box(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
+                                    .size(32.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(ToolboxTheme.bgSubtle)
                                     .clickable {
-                                        if (ingNames.size > 1) {
-                                            ingNames.removeAt(index)
-                                            ingQtys.removeAt(index)
+                                        if (ingredients.size > 1) {
+                                            ingredients.removeAt(index)
                                         } else {
-                                            ingNames[0] = ""; ingQtys[0] = ""
+                                            ingredients[0] = RecipeIngredient("", "")
                                         }
-                                    }
-                                    .padding(6.dp)
-                            )
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("✕", fontSize = 14.sp, color = ToolboxTheme.inkMute)
+                            }
                         }
                     }
                     ChunkyButton(
-                        onClick = { ingNames.add(""); ingQtys.add("") },
+                        onClick = { ingredients.add(RecipeIngredient("", "")) },
                         text = "+ Ingredient",
                         variant = "ghost",
                         size = "sm"
@@ -406,17 +409,18 @@ fun RecipeForm(
                                 placeholder = "Boil the pasta",
                                 modifier = Modifier.weight(1f)
                             )
-                            Text(
-                                text = "✕",
-                                fontSize = 14.sp,
-                                color = ToolboxTheme.inkMute,
+                            Box(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
+                                    .size(32.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(ToolboxTheme.bgSubtle)
                                     .clickable {
                                         if (steps.size > 1) steps.removeAt(index) else steps[0] = ""
-                                    }
-                                    .padding(6.dp)
-                            )
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("✕", fontSize = 14.sp, color = ToolboxTheme.inkMute)
+                            }
                         }
                     }
                     ChunkyButton(
@@ -434,11 +438,11 @@ fun RecipeForm(
             ChunkyButton(onClick = onCancel, text = "Cancel", variant = "outline", modifier = Modifier.weight(1f))
             ChunkyButton(
                 onClick = {
-                    val ingredients = ingNames.indices
-                        .filter { ingNames[it].trim().isNotEmpty() }
-                        .map { RecipeIngredient(ingNames[it].trim(), ingQtys[it].trim()) }
+                    val cleanIngredients = ingredients
+                        .filter { it.name.trim().isNotEmpty() }
+                        .map { RecipeIngredient(it.name.trim(), it.qty.trim()) }
                     val cleanSteps = steps.map { it.trim() }.filter { it.isNotEmpty() }
-                    onSave(name.trim(), ingredients, cleanSteps)
+                    onSave(name.trim(), cleanIngredients, cleanSteps)
                 },
                 text = "Save",
                 modifier = Modifier.weight(1f),

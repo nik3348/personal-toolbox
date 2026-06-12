@@ -12,7 +12,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
@@ -28,7 +27,15 @@ fun MeScreen(
     onDarkModeChange: (Boolean) -> Unit
 ) {
     var showResetFeedback by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
+    var resetClickCount by remember { mutableStateOf(0) }
+
+    LaunchedEffect(resetClickCount) {
+        if (resetClickCount > 0) {
+            showResetFeedback = true
+            delay(600.milliseconds)
+            showResetFeedback = false
+        }
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -184,11 +191,7 @@ fun MeScreen(
             ChunkyButton(
                 onClick = {
                     onReset()
-                    scope.launch {
-                        showResetFeedback = true
-                        delay(600.milliseconds)
-                        showResetFeedback = false
-                    }
+                    resetClickCount++
                 },
                 text = "Reset demo data",
                 variant = "outline",

@@ -182,12 +182,13 @@ class ToolboxRepository(private val storage: StorageProvider = KeyValueStorage()
 
     fun sendRecipeToShoppingList(id: String) {
         val recipe = state.recipes.firstOrNull { it.id == id } ?: return
-        val missing = recipe.ingredients.filter { ing ->
-            state.fridge.none { it.name.equals(ing.name, ignoreCase = true) } &&
-                state.shoppingList.none { !it.checked && it.name.equals(ing.name, ignoreCase = true) }
-        }
+        val existingNames = (state.fridge.map { it.name.trim().lowercase() } +
+            state.shoppingList.filter { !it.checked }.map { it.name.trim().lowercase() }).toSet()
+        val missing = recipe.ingredients
+            .distinctBy { it.name.trim().lowercase() }
+            .filter { it.name.trim().isNotEmpty() && !existingNames.contains(it.name.trim().lowercase()) }
         if (missing.isEmpty()) return
-        val newItems = missing.map { ShoppingListItem("s_" + getUniqueId(), it.name, it.qty.ifEmpty { "1" }, checked = false) }
+        val newItems = missing.map { ShoppingListItem("s_" + getUniqueId(), it.name.trim(), it.qty.trim().ifEmpty { "1" }, checked = false) }
         state = state.copy(shoppingList = state.shoppingList + newItems)
     }
 
@@ -434,24 +435,27 @@ class ToolboxRepository(private val storage: StorageProvider = KeyValueStorage()
                 }
             } else if (section == "[RECIPES]") {
                 val parts = trimmed.split("|")
-                when {
-                    parts[0] == "R" && parts.size >= 3 -> recipes.add(
-                        Recipe(
-                            id = unescape(parts[1]),
-                            name = unescape(parts[2]),
-                            ingredients = emptyList(),
-                            steps = emptyList()
-                        )
-                    )
-                    parts[0] == "I" && parts.size >= 3 && recipes.isNotEmpty() -> {
-                        val last = recipes.last()
-                        recipes[recipes.lastIndex] = last.copy(
-                            ingredients = last.ingredients + RecipeIngredient(unescape(parts[1]), unescape(parts[2]))
-                        )
-                    }
-                    parts[0] == "S" && parts.size >= 2 && recipes.isNotEmpty() -> {
-                        val last = recipes.last()
-                        recipes[recipes.lastIndex] = last.copy(steps = last.steps + unescape(parts[1]))
+                if (parts.isNotEmpty()) {
+                    when (parts[0]) {
+                        "R" -> if (parts.size >= 3) {
+                            recipes.add(Recipe(
+                                id = unescape(parts[1]),
+                                name = unescape(parts[2]),
+                                ingredients = emptyList(),
+                                steps = emptyList()
+                            ))
+                        }
+                        "I" -> if (parts.size >= 2 && recipes.isNotEmpty()) {
+                            val last = recipes.last()
+                            val qty = if (parts.size >= 3) unescape(parts[2]) else ""
+                            recipes[recipes.lastIndex] = last.copy(
+                                ingredients = last.ingredients + RecipeIngredient(unescape(parts[1]), qty)
+                            )
+                        }
+                        "S" -> if (parts.size >= 2 && recipes.isNotEmpty()) {
+                            val last = recipes.last()
+                            recipes[recipes.lastIndex] = last.copy(steps = last.steps + unescape(parts[1]))
+                        }
                     }
                 }
             }
