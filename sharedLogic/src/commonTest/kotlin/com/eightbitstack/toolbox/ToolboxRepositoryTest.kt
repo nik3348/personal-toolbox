@@ -146,6 +146,34 @@ class ToolboxRepositoryTest {
     }
 
     @Test
+    fun testSettingsRoundTrip() {
+        val storage = MockStorage()
+        val repo = ToolboxRepository(storage)
+        repo.setAccent("forest")
+        repo.setDarkMode(true)
+        repo.setShowFlourishes(false)
+        repo.setBackgroundPattern("dots")
+
+        val repo2 = ToolboxRepository(storage)
+
+        assertEquals(AppSettings("forest", true, false, "dots"), repo2.state.settings)
+    }
+
+    @Test
+    fun testResetKeepsSettings() {
+        val repo = ToolboxRepository(MockStorage())
+        repo.setAccent("sunset")
+        repo.setDarkMode(true)
+        repo.addShoppingItem("Scratch item", "1")
+
+        repo.reset()
+
+        assertEquals("sunset", repo.state.settings.accent)
+        assertTrue(repo.state.settings.darkMode)
+        assertTrue(repo.state.shoppingList.none { it.name == "Scratch item" })
+    }
+
+    @Test
     fun testGarbageStorageDoesNotCrash() {
         val storage = MockStorage()
         storage.saveString("toolbox-state-v1", "not a valid state\n[GARBAGE]\n???|x")

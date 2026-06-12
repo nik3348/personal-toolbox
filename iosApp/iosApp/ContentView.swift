@@ -117,30 +117,41 @@ class ToolboxObservableState: ObservableObject, ToolboxRepositoryListener {
     }
     func reset() { repo.reset() }
     func setQuiet(on: Bool) { repo.setQuiet(on: on) }
+    func setAccent(accent: String) { repo.setAccent(accent: accent) }
+    func setShowFlourishes(on: Bool) { repo.setShowFlourishes(on: on) }
+    func setBackgroundPattern(pattern: String) { repo.setBackgroundPattern(pattern: pattern) }
 }
 
 struct ContentView: View {
     @StateObject var store = ToolboxObservableState(repo: ToolboxRepository(storage: KeyValueStorage()))
     @State private var activeTab = "home"
-    @State private var accent = "indigo"
-    @State private var showFlourishes = true
-    @State private var backgroundPattern = "grid"
+
+    // Appearance settings persist in shared ToolboxState
+    var accentBinding: Binding<String> {
+        Binding(get: { store.state.settings.accent }, set: { store.setAccent(accent: $0) })
+    }
+    var showFlourishesBinding: Binding<Bool> {
+        Binding(get: { store.state.settings.showFlourishes }, set: { store.setShowFlourishes(on: $0) })
+    }
+    var backgroundPatternBinding: Binding<String> {
+        Binding(get: { store.state.settings.backgroundPattern }, set: { store.setBackgroundPattern(pattern: $0) })
+    }
 
     var currentPalette: SwiftBrandPalette {
-        SwiftBrandPalettes[accent] ?? SwiftIndigo
+        SwiftBrandPalettes[store.state.settings.accent] ?? SwiftIndigo
     }
 
     var body: some View {
         ZStack {
             // Background pattern
-            BackgroundView(pattern: backgroundPattern)
+            BackgroundView(pattern: store.state.settings.backgroundPattern)
                 .edgesIgnoringSafeArea(.all)
 
             VStack(spacing: 0) {
                 // Content area
                 ZStack {
                     if activeTab == "home" {
-                        SwiftHomeScreen(store: store, activeTab: $activeTab, palette: currentPalette, showFlourishes: showFlourishes)
+                        SwiftHomeScreen(store: store, activeTab: $activeTab, palette: currentPalette, showFlourishes: store.state.settings.showFlourishes)
                     } else if activeTab == "reminders" {
                         SwiftRemindersScreen(store: store, palette: currentPalette)
                     } else if activeTab == "fridge" {
@@ -150,9 +161,9 @@ struct ContentView: View {
                     } else if activeTab == "me" {
                         SwiftMeScreen(
                             store: store,
-                            accent: $accent,
-                            showFlourishes: $showFlourishes,
-                            backgroundPattern: $backgroundPattern,
+                            accent: accentBinding,
+                            showFlourishes: showFlourishesBinding,
+                            backgroundPattern: backgroundPatternBinding,
                             palette: currentPalette
                         )
                     }

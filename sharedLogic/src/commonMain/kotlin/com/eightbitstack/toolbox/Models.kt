@@ -25,10 +25,18 @@ data class ShoppingListItem(
     val checked: Boolean
 )
 
+data class AppSettings(
+    val accent: String = "indigo",
+    val darkMode: Boolean = false,
+    val showFlourishes: Boolean = true,
+    val backgroundPattern: String = "grid"
+)
+
 data class ToolboxState(
     val quietHoursOn: Boolean,
     val reminders: List<Reminder>,
     val doneIds: List<String>,
     val fridge: List<FridgeItem>,
-    val shoppingList: List<ShoppingListItem> = emptyList()
+    val shoppingList: List<ShoppingListItem> = emptyList(),
+    val settings: AppSettings = AppSettings()
 )

@@ -163,8 +163,25 @@ class ToolboxRepository(private val storage: StorageProvider = KeyValueStorage()
         state = state.copy(fridge = newFridge, shoppingList = state.shoppingList.filter { !it.checked })
     }
 
+    fun setAccent(accent: String) {
+        state = state.copy(settings = state.settings.copy(accent = accent))
+    }
+
+    fun setDarkMode(on: Boolean) {
+        state = state.copy(settings = state.settings.copy(darkMode = on))
+    }
+
+    fun setShowFlourishes(on: Boolean) {
+        state = state.copy(settings = state.settings.copy(showFlourishes = on))
+    }
+
+    fun setBackgroundPattern(pattern: String) {
+        state = state.copy(settings = state.settings.copy(backgroundPattern = pattern))
+    }
+
     fun reset() {
-        state = getSeedState()
+        // Resets demo data but keeps the user's appearance settings
+        state = getSeedState().copy(settings = state.settings)
     }
 
     // --- Persistence helper ---
@@ -239,6 +256,10 @@ class ToolboxRepository(private val storage: StorageProvider = KeyValueStorage()
         val sb = StringBuilder()
         sb.append("QUIETHOURS=").append(s.quietHoursOn).append("\n")
         sb.append("DONEIDS=").append(s.doneIds.joinToString(",")).append("\n")
+        sb.append("ACCENT=").append(escape(s.settings.accent)).append("\n")
+        sb.append("DARKMODE=").append(s.settings.darkMode).append("\n")
+        sb.append("FLOURISHES=").append(s.settings.showFlourishes).append("\n")
+        sb.append("PATTERN=").append(escape(s.settings.backgroundPattern)).append("\n")
         sb.append("[REMINDERS]\n")
         for (r in s.reminders) {
             sb.append(escape(r.id)).append("|")
@@ -270,6 +291,7 @@ class ToolboxRepository(private val storage: StorageProvider = KeyValueStorage()
     private fun deserializeState(raw: String): ToolboxState {
         var quietHoursOn = true
         var doneIds = listOf<String>()
+        var settings = AppSettings()
         val reminders = mutableListOf<Reminder>()
         val fridge = mutableListOf<FridgeItem>()
         val shoppingList = mutableListOf<ShoppingListItem>()
@@ -289,6 +311,14 @@ class ToolboxRepository(private val storage: StorageProvider = KeyValueStorage()
                 } else if (trimmed.startsWith("DONEIDS=")) {
                     val rawIds = trimmed.substringAfter("DONEIDS=")
                     doneIds = if (rawIds.isEmpty()) emptyList() else rawIds.split(",")
+                } else if (trimmed.startsWith("ACCENT=")) {
+                    settings = settings.copy(accent = unescape(trimmed.substringAfter("ACCENT=")))
+                } else if (trimmed.startsWith("DARKMODE=")) {
+                    settings = settings.copy(darkMode = trimmed.substringAfter("DARKMODE=").toBoolean())
+                } else if (trimmed.startsWith("FLOURISHES=")) {
+                    settings = settings.copy(showFlourishes = trimmed.substringAfter("FLOURISHES=").toBoolean())
+                } else if (trimmed.startsWith("PATTERN=")) {
+                    settings = settings.copy(backgroundPattern = unescape(trimmed.substringAfter("PATTERN=")))
                 }
             } else if (section == "[REMINDERS]") {
                 val parts = trimmed.split("|")
@@ -332,6 +362,6 @@ class ToolboxRepository(private val storage: StorageProvider = KeyValueStorage()
                 }
             }
         }
-        return ToolboxState(quietHoursOn, reminders, doneIds, fridge, shoppingList)
+        return ToolboxState(quietHoursOn, reminders, doneIds, fridge, shoppingList, settings)
     }
 }
