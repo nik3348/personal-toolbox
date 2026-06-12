@@ -31,6 +31,8 @@ import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import kotlin.math.roundToInt
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -419,6 +421,12 @@ fun Sheet(
     // Scrim disappears fluidly as sheet moves down
     val scrimAlpha = (1f - progress.value.coerceIn(0f, 1f)) * 0.4f
 
+    // Popup gives the sheet its own window layer so the scrim covers the
+    // tab bar too; focusable so text fields get the IME and back dismisses
+    Popup(
+        onDismissRequest = onClose,
+        properties = PopupProperties(focusable = true)
+    ) {
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -494,6 +502,7 @@ fun Sheet(
                 }
             }
         }
+    }
     }
 }
 

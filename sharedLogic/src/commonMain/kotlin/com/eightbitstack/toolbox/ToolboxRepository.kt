@@ -153,8 +153,7 @@ class ToolboxRepository(private val storage: StorageProvider = KeyValueStorage()
     fun purchaseShoppingItem(itemId: String, location: String, expiry: String) {
         val item = state.shoppingList.firstOrNull { it.id == itemId } ?: return
         val newFridge = state.fridge + FridgeItem("f_" + getUniqueId(), item.name, item.qty, expiry, location)
-        val newList = state.shoppingList.map { if (it.id == itemId) it.copy(checked = true) else it }
-        state = state.copy(fridge = newFridge, shoppingList = newList)
+        state = state.copy(fridge = newFridge, shoppingList = state.shoppingList.filter { it.id != itemId })
     }
 
     fun purchaseCheckedShoppingItems(location: String, expiry: String) {

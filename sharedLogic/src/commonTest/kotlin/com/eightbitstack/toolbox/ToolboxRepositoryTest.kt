@@ -71,14 +71,14 @@ class ToolboxRepositoryTest {
     }
 
     @Test
-    fun testPurchaseShoppingItemMarksChecked() {
+    fun testPurchaseShoppingItemMovesToFridge() {
         val repo = ToolboxRepository(MockStorage())
         repo.addShoppingItem("Lemons", "4")
         val lemons = repo.state.shoppingList.first { it.name == "Lemons" }
 
         repo.purchaseShoppingItem(lemons.id, "pantry", "2026-07-01")
 
-        assertTrue(repo.state.shoppingList.first { it.id == lemons.id }.checked)
+        assertTrue(repo.state.shoppingList.none { it.id == lemons.id })
         assertTrue(repo.state.fridge.any { it.name == "Lemons" && it.location == "pantry" && it.expiry == "2026-07-01" })
     }
 
