@@ -29,6 +29,9 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -387,32 +390,32 @@ fun Sheet(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
-    var isRendered by remember { mutableStateOf(open) }
-    val density = androidx.compose.ui.platform.LocalDensity.current
-    val offsetY = remember { androidx.compose.animation.core.Animatable(if (open) 0f else 1500f) }
+    var isRendered by remember { mutableStateOf(false) }
+    // 0 = resting, 1 = pushed fully below the screen by its own height
+    val progress = remember { Animatable(1f) }
+    var sheetHeightPx by remember { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(open) {
         if (open) {
             isRendered = true
-            offsetY.animateTo(
+            progress.animateTo(
                 targetValue = 0f,
-                animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow)
+                animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
             )
-        } else {
-            // Smooth fluid close
-            offsetY.animateTo(
-                targetValue = 2000f, 
-                animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+        } else if (isRendered) {
+            progress.animateTo(
+                targetValue = 1f,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
             )
             isRendered = false
         }
     }
 
-    if (!isRendered && offsetY.value >= 1999f) return
+    if (!isRendered) return
 
     // Scrim disappears fluidly as sheet moves down
-    val scrimAlpha = (1f - (offsetY.value / 1000f).coerceIn(0f, 1f)) * 0.4f
+    val scrimAlpha = (1f - progress.value.coerceIn(0f, 1f)) * 0.4f
 
     Box(
         modifier = modifier
@@ -429,27 +432,29 @@ fun Sheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(0.85f)
-                .offset(y = with(density) { offsetY.value.toDp() })
+                .onSizeChanged { sheetHeightPx = it.height }
+                // Until measured, push the sheet far offscreen so it never flashes
+                .offset {
+                    val travel = if (sheetHeightPx > 0) sheetHeightPx else 100_000
+                    IntOffset(0, (progress.value * travel).roundToInt())
+                }
                 .pointerInput(Unit) {
                     detectDragGestures(
                         onDragEnd = {
-                            if (offsetY.value > 250f) {
-                                // Animate away fluidly for local feedback
-                                scope.launch {
-                                    offsetY.animateTo(2000f, spring(stiffness = Spring.StiffnessMediumLow))
-                                }
+                            if (progress.value > 0.25f) {
+                                // LaunchedEffect(open) finishes the slide from the dragged position
                                 onClose()
                             } else {
                                 scope.launch {
-                                    offsetY.animateTo(0f, spring(dampingRatio = Spring.DampingRatioNoBouncy))
+                                    progress.animateTo(0f, spring(dampingRatio = Spring.DampingRatioNoBouncy))
                                 }
                             }
                         },
                         onDrag = { change: PointerInputChange, dragAmount: Offset ->
                             change.consume()
-                            scope.launch {
-                                val newVal = (offsetY.value + dragAmount.y).coerceAtLeast(0f)
-                                offsetY.snapTo(newVal)
+                            if (sheetHeightPx > 0) {
+                                val newVal = (progress.value + dragAmount.y / sheetHeightPx).coerceIn(0f, 1f)
+                                scope.launch { progress.snapTo(newVal) }
                             }
                         }
                     )
