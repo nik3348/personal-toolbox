@@ -14,6 +14,7 @@ kotlin {
 dependencies {
     implementation(projects.sharedLogic)
 
+    implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.compose.runtime)
     implementation(libs.compose.foundation)

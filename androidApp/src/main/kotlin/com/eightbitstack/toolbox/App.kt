@@ -22,11 +22,13 @@ import androidx.compose.ui.unit.sp
 fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
     val repository = remember { ToolboxRepository() }
     var appState by remember { mutableStateOf(repository.state) }
+    val appContext = androidx.compose.ui.platform.LocalContext.current.applicationContext
 
     DisposableEffect(repository) {
         val listener = object : ToolboxRepository.Listener {
             override fun onStateChanged(state: ToolboxState) {
                 appState = state
+                ReminderScheduler.sync(appContext, state)
             }
         }
         repository.addListener(listener)
@@ -35,15 +37,16 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
         }
     }
 
-    // Settings & customization state (synced locally via the same repository storage in production, or kept locally here)
     var activeTab by remember { mutableStateOf("home") }
-    var accent by remember { mutableStateOf("indigo") }
-    var showFlourishes by remember { mutableStateOf(true) }
-    var backgroundPattern by remember { mutableStateOf("grid") }
+
+    // Appearance settings live in ToolboxState so they persist across launches
+    val settings = appState.settings
+    val accent = settings.accent
+    val showFlourishes = settings.showFlourishes
+    val backgroundPattern = settings.backgroundPattern
+    val darkMode = settings.darkMode
 
     val activePalette = BrandPalettes[accent] ?: IndigoPalette
-
-    var darkMode by remember { mutableStateOf(false) }
 
     LaunchedEffect(darkMode) {
         onDarkModeChanged?.invoke(darkMode)
@@ -147,13 +150,13 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                     "me" -> MeScreen(
                         onReset = { repository.reset() },
                         accent = accent,
-                        onAccentChange = { accent = it },
+                        onAccentChange = { repository.setAccent(it) },
                         showFlourishes = showFlourishes,
-                        onShowFlourishesChange = { showFlourishes = it },
+                        onShowFlourishesChange = { repository.setShowFlourishes(it) },
                         backgroundPattern = backgroundPattern,
-                        onBackgroundPatternChange = { backgroundPattern = it },
+                        onBackgroundPatternChange = { repository.setBackgroundPattern(it) },
                         darkMode = darkMode,
-                        onDarkModeChange = { darkMode = it }
+                        onDarkModeChange = { repository.setDarkMode(it) }
                     )
                 }
             }
