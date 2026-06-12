@@ -25,6 +25,18 @@ data class ShoppingListItem(
     val checked: Boolean
 )
 
+data class RecipeIngredient(
+    val name: String,
+    val qty: String
+)
+
+data class Recipe(
+    val id: String,
+    val name: String,
+    val ingredients: List<RecipeIngredient>,
+    val steps: List<String>
+)
+
 data class AppSettings(
     val accent: String = "indigo",
     val darkMode: Boolean = false,
@@ -38,5 +50,6 @@ data class ToolboxState(
     val doneIds: List<String>,
     val fridge: List<FridgeItem>,
     val shoppingList: List<ShoppingListItem> = emptyList(),
+    val recipes: List<Recipe> = emptyList(),
     val settings: AppSettings = AppSettings()
 )

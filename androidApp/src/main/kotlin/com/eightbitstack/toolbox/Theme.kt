@@ -115,6 +115,10 @@ object ToolboxTheme {
         @Composable
         get() = if (LocalDarkMode.current) Color(0xFF334155) else Color(0xFFE2E8F0)
 
+    val dragHandle: Color
+        @Composable
+        get() = if (LocalDarkMode.current) Color(0xFF475569) else Color(0xFFCBD5E1)
+
     val activePalette: BrandPalette
         @Composable
         @ReadOnlyComposable

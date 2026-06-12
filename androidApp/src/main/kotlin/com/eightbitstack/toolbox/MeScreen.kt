@@ -5,12 +5,14 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun MeScreen(
@@ -24,6 +26,17 @@ fun MeScreen(
     darkMode: Boolean,
     onDarkModeChange: (Boolean) -> Unit
 ) {
+    var showResetFeedback by remember { mutableStateOf(false) }
+    var resetClickCount by remember { mutableStateOf(0) }
+
+    LaunchedEffect(resetClickCount) {
+        if (resetClickCount > 0) {
+            showResetFeedback = true
+            delay(600.milliseconds)
+            showResetFeedback = false
+        }
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -176,11 +189,15 @@ fun MeScreen(
         item {
             Spacer(modifier = Modifier.height(6.dp))
             ChunkyButton(
-                onClick = onReset,
+                onClick = {
+                    onReset()
+                    resetClickCount++
+                },
                 text = "Reset demo data",
                 variant = "outline",
                 fullWidth = true,
-                size = "sm"
+                size = "sm",
+                pressed = showResetFeedback
             )
         }
     }

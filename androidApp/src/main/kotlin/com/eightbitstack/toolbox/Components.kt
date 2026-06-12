@@ -69,11 +69,12 @@ fun ChunkyButton(
     icon: (@Composable () -> Unit)? = null,
     fullWidth: Boolean = false,
     shadowColor: Color? = null,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    pressed: Boolean = false
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val actualPressed = isPressed && enabled
+    val isPressedInteraction by interactionSource.collectIsPressedAsState()
+    val actualPressed = (isPressedInteraction || pressed) && enabled
 
     val palette = ToolboxTheme.activePalette
     val sc = if (enabled) (shadowColor ?: if (variant == "primary") palette.deep else (if (LocalDarkMode.current) Color(0xFF090D16) else ToolboxTheme.ink)) else Color.Transparent
@@ -115,11 +116,12 @@ fun ChunkyButton(
         ToolboxTheme.inkMute
     }
 
+    val borderColor = if (LocalDarkMode.current) ToolboxTheme.control else ToolboxTheme.ink
     val border = if (enabled) {
         when (variant) {
-            "outline" -> Modifier.border(2.dp, if (LocalDarkMode.current) Color(0xFF334155) else ToolboxTheme.ink, RoundedCornerShape(12.dp))
+            "outline" -> Modifier.border(2.dp, borderColor, RoundedCornerShape(12.dp))
             "ghost" -> Modifier
-            else -> Modifier.border(1.5.dp, if (variant == "primary") palette.primary else (if (LocalDarkMode.current) Color(0xFF334155) else ToolboxTheme.ink), RoundedCornerShape(12.dp))
+            else -> Modifier.border(1.5.dp, if (variant == "primary") palette.primary else borderColor, RoundedCornerShape(12.dp))
         }
     } else {
         if (variant == "ghost") Modifier else Modifier.border(1.5.dp, ToolboxTheme.line, RoundedCornerShape(12.dp))
@@ -483,7 +485,7 @@ fun Sheet(
                     modifier = Modifier
                         .size(36.dp, 4.dp)
                         .clip(RoundedCornerShape(999.dp))
-                        .background(if (LocalDarkMode.current) Color(0xFF475569) else Color(0xFFCBD5E1))
+                        .background(ToolboxTheme.dragHandle)
                         .align(Alignment.CenterHorizontally)
                 )
                 Spacer(modifier = Modifier.height(14.dp))

@@ -147,6 +147,18 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                             repository.purchaseCheckedShoppingItems(location, expiry)
                         }
                     )
+                    "recipes" -> RecipesScreen(
+                        state = appState,
+                        onSaveRecipe = { id, name, ingredients, steps ->
+                            if (id != null) {
+                                repository.updateRecipe(id, name, ingredients, steps)
+                            } else {
+                                repository.addRecipe(name, ingredients, steps)
+                            }
+                        },
+                        onDeleteRecipe = { repository.deleteRecipe(it) },
+                        onSendToShoppingList = { repository.sendRecipeToShoppingList(it) }
+                    )
                     "me" -> MeScreen(
                         onReset = { repository.reset() },
                         accent = accent,
@@ -184,6 +196,7 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                         Triple("reminders", "Quiet", "🔕"),
                         Triple("fridge", "Fridge", "❄"),
                         Triple("shopping", "List", "🛒"),
+                        Triple("recipes", "Cook", "🍳"),
                         Triple("me", "Me", "👤")
                     )
 
