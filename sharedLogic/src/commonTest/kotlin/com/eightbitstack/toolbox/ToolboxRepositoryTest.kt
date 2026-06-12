@@ -110,6 +110,25 @@ class ToolboxRepositoryTest {
     }
 
     @Test
+    fun testPurchaseCheckedShoppingItemsMovesAllToFridge() {
+        val repo = ToolboxRepository(MockStorage())
+        repo.addShoppingItem("Bagels", "6")
+        repo.addShoppingItem("Cream cheese", "1 tub")
+        repo.addShoppingItem("Capers", "1 jar")
+        val bagels = repo.state.shoppingList.first { it.name == "Bagels" }
+        val creamCheese = repo.state.shoppingList.first { it.name == "Cream cheese" }
+        repo.toggleShoppingItem(bagels.id)
+        repo.toggleShoppingItem(creamCheese.id)
+
+        repo.purchaseCheckedShoppingItems("freezer", "2026-08-01")
+
+        assertTrue(repo.state.fridge.any { it.name == "Bagels" && it.location == "freezer" && it.expiry == "2026-08-01" })
+        assertTrue(repo.state.fridge.any { it.name == "Cream cheese" && it.location == "freezer" })
+        assertTrue(repo.state.shoppingList.none { it.checked })
+        assertTrue(repo.state.shoppingList.any { it.name == "Capers" })
+    }
+
+    @Test
     fun testSerializationRoundTripWithSpecialCharacters() {
         val storage = MockStorage()
         val repo = ToolboxRepository(storage)

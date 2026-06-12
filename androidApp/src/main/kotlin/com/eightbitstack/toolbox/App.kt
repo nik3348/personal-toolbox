@@ -139,6 +139,9 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                         onClearChecked = { repository.clearCheckedShoppingItems() },
                         onPurchaseItem = { id, location, expiry ->
                             repository.purchaseShoppingItem(id, location, expiry)
+                        },
+                        onPurchaseChecked = { location, expiry ->
+                            repository.purchaseCheckedShoppingItems(location, expiry)
                         }
                     )
                     "me" -> MeScreen(

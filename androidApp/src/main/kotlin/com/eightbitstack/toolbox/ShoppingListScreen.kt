@@ -28,11 +28,13 @@ fun ShoppingListScreen(
     onToggleItem: (String) -> Unit,
     onDeleteItem: (String) -> Unit,
     onClearChecked: () -> Unit,
-    onPurchaseItem: (id: String, location: String, expiry: String) -> Unit
+    onPurchaseItem: (id: String, location: String, expiry: String) -> Unit,
+    onPurchaseChecked: (location: String, expiry: String) -> Unit
 ) {
     var expandedId by remember { mutableStateOf<String?>(null) }
     var editSheetOpen by remember { mutableStateOf(false) }
     var fridgeSheetOpen by remember { mutableStateOf(false) }
+    var bulkFridgeSheetOpen by remember { mutableStateOf(false) }
     var editFor by remember { mutableStateOf<ShoppingListItem?>(null) }
     var fridgeFor by remember { mutableStateOf<ShoppingListItem?>(null) }
 
@@ -74,13 +76,23 @@ fun ShoppingListScreen(
                             )
                         }
                         if (checkedItems.isNotEmpty()) {
-                            ChunkyButton(
-                                onClick = onClearChecked,
-                                text = "Clear done",
-                                variant = "ghost",
-                                size = "sm",
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
                                 modifier = Modifier.padding(bottom = 2.dp)
-                            )
+                            ) {
+                                ChunkyButton(
+                                    onClick = onClearChecked,
+                                    text = "Clear done",
+                                    variant = "ghost",
+                                    size = "sm"
+                                )
+                                ChunkyButton(
+                                    onClick = { bulkFridgeSheetOpen = true },
+                                    text = "To fridge",
+                                    size = "sm",
+                                    icon = { Text("❄", color = Color.White, fontSize = 12.sp) }
+                                )
+                            }
                         }
                     }
                 }
@@ -164,9 +176,10 @@ fun ShoppingListScreen(
                     editFor = null
                     editSheetOpen = true
                 },
-                text = "Add item",
+                text = "Add",
                 size = "sm",
-                icon = { Text("+", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
+                icon = { Text("+", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp) },
+                modifier = Modifier.width(80.dp)
             )
         }
 
@@ -199,7 +212,7 @@ fun ShoppingListScreen(
             val currentItem = fridgeFor
             if (currentItem != null) {
                 SendToFridgeForm(
-                    item = currentItem,
+                    message = "Moving ${currentItem.name} from your list into the fridge tracker.",
                     onSave = { location, expiry ->
                         onPurchaseItem(currentItem.id, location, expiry)
                         fridgeSheetOpen = false
@@ -211,6 +224,22 @@ fun ShoppingListScreen(
                     }
                 )
             }
+        }
+
+        // Bulk Send to Fridge Sheet
+        Sheet(
+            open = bulkFridgeSheetOpen,
+            onClose = { bulkFridgeSheetOpen = false },
+            title = "Move bought to fridge"
+        ) {
+            SendToFridgeForm(
+                message = "Moving ${checkedItems.size} bought item${if (checkedItems.size == 1) "" else "s"} from your list into the fridge tracker.",
+                onSave = { location, expiry ->
+                    onPurchaseChecked(location, expiry)
+                    bulkFridgeSheetOpen = false
+                },
+                onCancel = { bulkFridgeSheetOpen = false }
+            )
         }
     }
 }
@@ -376,7 +405,7 @@ fun ShoppingItemForm(
 
 @Composable
 fun SendToFridgeForm(
-    item: ShoppingListItem,
+    message: String,
     onSave: (location: String, expiry: String) -> Unit,
     onCancel: () -> Unit
 ) {
@@ -397,7 +426,7 @@ fun SendToFridgeForm(
             Text("❄", fontSize = 16.sp)
             Spacer(modifier = Modifier.width(10.dp))
             Text(
-                text = "Moving ${item.name} from your list into the fridge tracker.",
+                text = message,
                 fontSize = 13.sp,
                 color = ToolboxTheme.inkSoft,
                 lineHeight = 18.sp

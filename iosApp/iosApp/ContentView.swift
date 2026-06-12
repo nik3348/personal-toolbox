@@ -112,6 +112,9 @@ class ToolboxObservableState: ObservableObject, ToolboxRepositoryListener {
     func purchaseShoppingItem(id: String, location: String, expiry: String) {
         repo.purchaseShoppingItem(itemId: id, location: location, expiry: expiry)
     }
+    func purchaseCheckedShoppingItems(location: String, expiry: String) {
+        repo.purchaseCheckedShoppingItems(location: location, expiry: expiry)
+    }
     func reset() { repo.reset() }
     func setQuiet(on: Bool) { repo.setQuiet(on: on) }
 }
@@ -471,6 +474,14 @@ struct SwiftShoppingScreen: View {
                             .font(.system(.caption, design: .monospaced))
                             .foregroundColor(SwiftTheme.inkMute)
                         Spacer()
+                        Button("To Fridge") {
+                            store.purchaseCheckedShoppingItems(
+                                location: "fridge",
+                                expiry: DateUtils.shared.getTodayPlusDays(days: 7)
+                            )
+                        }
+                        .font(.caption)
+                        .foregroundColor(palette.primary)
                         Button("Clear") { store.clearCheckedShoppingItems() }
                             .font(.caption)
                             .foregroundColor(SwiftTheme.danger)
