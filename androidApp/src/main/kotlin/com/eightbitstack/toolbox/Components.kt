@@ -128,7 +128,9 @@ fun ChunkyButton(
 
     Box(
         modifier = modifier
-            .then(if (fullWidth) Modifier.fillMaxWidth() else Modifier.wrapContentWidth())
+            // Size to content: the inner shadow/body boxes use fillMaxSize, which
+            // would otherwise greedily fill the incoming max width and starve siblings
+            .then(if (fullWidth) Modifier.fillMaxWidth() else Modifier.width(IntrinsicSize.Max))
             .height(height)
             .clip(RoundedCornerShape(12.dp))
             .clickable(
