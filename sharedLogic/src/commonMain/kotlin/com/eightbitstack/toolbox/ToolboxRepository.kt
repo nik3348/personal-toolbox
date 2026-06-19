@@ -12,8 +12,9 @@ class ToolboxRepository(private val storage: StorageProvider = KeyValueStorage()
     
     var state: ToolboxState = loadState()
         private set(value) {
-            field = value
-            saveState(value)
+            // Stamp every mutation so a future cloud sync has a conflict key.
+            field = value.copy(updatedAt = DateUtils.epochMillis())
+            saveState(field)
             notifyListeners()
         }
 
@@ -184,6 +185,30 @@ class ToolboxRepository(private val storage: StorageProvider = KeyValueStorage()
         state = getSeedState().copy(settings = state.settings)
     }
 
+    /** Reconciles per-day reminder state with the calendar. Call on app open.
+     *  Once the date changes: clears the "done" checkmarks of repeating reminders
+     *  (they recur) while leaving one-shot completions intact, and recomputes the
+     *  deterministic repeats' due-today flag (daily every day, weekdays Mon–Fri).
+     *  No-op if it already ran today. */
+    fun rolloverIfNeeded() {
+        val today = DateUtils.getTodayPlusDays(0)
+        if (state.lastRolloverDate == today) return
+
+        val weekend = DateUtils.isTodayWeekend()
+        val newReminders = state.reminders.map { r ->
+            val due = when (r.repeat) {
+                "daily" -> true
+                "weekdays" -> !weekend
+                else -> r.dueToday // weekly/monthly anchors and one-shots are left as-is
+            }
+            if (due == r.dueToday) r else r.copy(dueToday = due)
+        }
+        val repeatingIds = state.reminders.filter { it.repeat.isNotEmpty() }.map { it.id }.toSet()
+        val newDone = state.doneIds.filter { !repeatingIds.contains(it) }
+
+        state = state.copy(reminders = newReminders, doneIds = newDone, lastRolloverDate = today)
+    }
+
     // --- Persistence helper ---
 
 
@@ -213,36 +238,23 @@ class ToolboxRepository(private val storage: StorageProvider = KeyValueStorage()
             .joinToString("")
     }
 
+    // A small, realistic starter set shown on first launch and after a reset.
+    // Intentionally minimal and example-like so new users can clear it quickly.
     private fun getSeedState(): ToolboxState {
         return ToolboxState(
             quietHoursOn = true,
             reminders = listOf(
-                Reminder("r1", "Water the plants", "09:00", "daily", "banner", true, true),
-                Reminder("r2", "Stand up + stretch", "11:30", "weekdays", "badge", true, true),
-                Reminder("r3", "Reply to Maya about the trip", "14:00", "", "banner", true, true),
-                Reminder("r4", "Thaw chicken for dinner", "17:30", "", "buzz", true, true),
-                Reminder("r5", "Library books due", "10:00", "", "banner", false, true),
-                Reminder("r6", "Pay rent", "09:00", "monthly", "banner", false, false),
-                Reminder("r7", "Wind down — close laptop", "22:00", "daily", "silent", true, true)
+                Reminder("r1", "Drink some water", "10:00", "daily", "banner", dueToday = true, on = true),
+                Reminder("r2", "Tidy up for five minutes", "19:00", "daily", "badge", dueToday = true, on = true)
             ),
-            doneIds = listOf("r2"),
+            doneIds = emptyList(),
             fridge = listOf(
-                FridgeItem("f1", "Milk, oat", "½ carton", DateUtils.getTodayPlusDays(1), "fridge"),
-                FridgeItem("f2", "Tofu", "1 block", DateUtils.getTodayPlusDays(3), "fridge"),
-                FridgeItem("f3", "Kale", "1 bag", DateUtils.getTodayPlusDays(4), "fridge"),
-                FridgeItem("f4", "Yogurt", "4-pack", DateUtils.getTodayPlusDays(5), "fridge"),
-                FridgeItem("f5", "Salsa verde", "1 jar", DateUtils.getTodayPlusDays(8), "fridge"),
-                FridgeItem("f6", "Eggs", "8 left", DateUtils.getTodayPlusDays(9), "fridge"),
-                FridgeItem("f7", "Butter", "1 stick", DateUtils.getTodayPlusDays(12), "fridge"),
-                FridgeItem("f8", "Cheddar", "~200 g", DateUtils.getTodayPlusDays(21), "fridge"),
-                FridgeItem("f9", "Frozen peas", "1 bag", DateUtils.getTodayPlusDays(60), "freezer"),
-                FridgeItem("f10", "Frozen berries", "1 bag", DateUtils.getTodayPlusDays(90), "freezer")
+                FridgeItem("f1", "Milk", "1 carton", DateUtils.getTodayPlusDays(2), "fridge"),
+                FridgeItem("f2", "Leftovers", "1 box", DateUtils.getTodayPlusDays(5), "fridge")
             ),
             shoppingList = listOf(
-                ShoppingListItem("s1", "Coffee beans", "1 bag", false),
-                ShoppingListItem("s2", "Avocados", "3", false),
-                ShoppingListItem("s3", "Bread", "1 loaf", false),
-                ShoppingListItem("s4", "Olive oil", "1 bottle", true)
+                ShoppingListItem("s1", "Bananas", "1 bunch", false),
+                ShoppingListItem("s2", "Bread", "1 loaf", false)
             )
         )
     }
@@ -260,6 +272,8 @@ class ToolboxRepository(private val storage: StorageProvider = KeyValueStorage()
         sb.append("DARKMODE=").append(s.settings.darkMode).append("\n")
         sb.append("FLOURISHES=").append(s.settings.showFlourishes).append("\n")
         sb.append("PATTERN=").append(escape(s.settings.backgroundPattern)).append("\n")
+        sb.append("UPDATEDAT=").append(s.updatedAt).append("\n")
+        sb.append("ROLLOVER=").append(escape(s.lastRolloverDate)).append("\n")
         sb.append("[REMINDERS]\n")
         for (r in s.reminders) {
             sb.append(escape(r.id)).append("|")
@@ -292,6 +306,8 @@ class ToolboxRepository(private val storage: StorageProvider = KeyValueStorage()
         var quietHoursOn = true
         var doneIds = listOf<String>()
         var settings = AppSettings()
+        var updatedAt = 0L
+        var lastRolloverDate = ""
         val reminders = mutableListOf<Reminder>()
         val fridge = mutableListOf<FridgeItem>()
         val shoppingList = mutableListOf<ShoppingListItem>()
@@ -319,6 +335,10 @@ class ToolboxRepository(private val storage: StorageProvider = KeyValueStorage()
                     settings = settings.copy(showFlourishes = trimmed.substringAfter("FLOURISHES=").toBoolean())
                 } else if (trimmed.startsWith("PATTERN=")) {
                     settings = settings.copy(backgroundPattern = unescape(trimmed.substringAfter("PATTERN=")))
+                } else if (trimmed.startsWith("UPDATEDAT=")) {
+                    updatedAt = trimmed.substringAfter("UPDATEDAT=").toLongOrNull() ?: 0L
+                } else if (trimmed.startsWith("ROLLOVER=")) {
+                    lastRolloverDate = unescape(trimmed.substringAfter("ROLLOVER="))
                 }
             } else if (section == "[REMINDERS]") {
                 val parts = trimmed.split("|")
@@ -362,6 +382,6 @@ class ToolboxRepository(private val storage: StorageProvider = KeyValueStorage()
                 }
             }
         }
-        return ToolboxState(quietHoursOn, reminders, doneIds, fridge, shoppingList, settings)
+        return ToolboxState(quietHoursOn, reminders, doneIds, fridge, shoppingList, settings, updatedAt, lastRolloverDate)
     }
 }
