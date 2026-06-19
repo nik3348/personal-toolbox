@@ -37,6 +37,13 @@ data class Recipe(
     val steps: List<String>
 )
 
+data class MealPlanEntry(
+    val id: String,
+    val date: String, // "YYYY-MM-DD"
+    val slot: String, // "breakfast", "lunch", "dinner"
+    val recipeId: String
+)
+
 data class AppSettings(
     val accent: String = "indigo",
     val darkMode: Boolean = false,
@@ -51,5 +58,11 @@ data class ToolboxState(
     val fridge: List<FridgeItem>,
     val shoppingList: List<ShoppingListItem> = emptyList(),
     val recipes: List<Recipe> = emptyList(),
-    val settings: AppSettings = AppSettings()
+    val mealPlan: List<MealPlanEntry> = emptyList(),
+    val settings: AppSettings = AppSettings(),
+    // Last local mutation time (epoch millis). Reserved for future cloud sync
+    // conflict resolution (last-write-wins); 0 means "never stamped".
+    val updatedAt: Long = 0,
+    // Date (YYYY-MM-DD) the daily rollover last ran. Empty until the first run.
+    val lastRolloverDate: String = ""
 )

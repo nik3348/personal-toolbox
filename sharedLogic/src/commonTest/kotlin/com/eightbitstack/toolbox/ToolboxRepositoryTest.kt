@@ -11,11 +11,72 @@ class ToolboxRepositoryTest {
         val repo = ToolboxRepository(MockStorage())
         val state = repo.state
         assertTrue(state.quietHoursOn)
-        assertEquals(7, state.reminders.size)
-        assertEquals(1, state.doneIds.size)
-        assertEquals("r2", state.doneIds.first())
-        assertEquals(10, state.fridge.size)
-        assertEquals(4, state.shoppingList.size)
+        // Production starter set: a small, example-like seed (not the old demo data).
+        assertEquals(2, state.reminders.size)
+        assertTrue(state.doneIds.isEmpty())
+        assertEquals(2, state.fridge.size)
+        assertEquals(2, state.shoppingList.size)
+    }
+
+    @Test
+    fun testRolloverClearsRepeatingDoneButKeepsOneShot() {
+        val repo = ToolboxRepository(MockStorage())
+        // A repeating (daily) and a one-shot reminder, both marked done today.
+        repo.addReminder("Daily thing", "08:00", "daily", "banner")
+        repo.addReminder("Once thing", "08:00", "", "banner")
+        val daily = repo.state.reminders.first { it.title == "Daily thing" }
+        val once = repo.state.reminders.first { it.title == "Once thing" }
+        repo.toggleDone(daily.id)
+        repo.toggleDone(once.id)
+        assertTrue(repo.state.doneIds.contains(daily.id))
+        assertTrue(repo.state.doneIds.contains(once.id))
+
+        // A fresh repo has never rolled over (lastRolloverDate is empty), so the
+        // first call runs and reconciles done-state as if the day changed.
+        repo.rolloverIfNeeded()
+
+        // Repeating reminder's checkmark resets; one-shot completion is preserved.
+        assertTrue(!repo.state.doneIds.contains(daily.id))
+        assertTrue(repo.state.doneIds.contains(once.id))
+    }
+
+    @Test
+    fun testRolloverIsNoOpWhenAlreadyRunToday() {
+        val repo = ToolboxRepository(MockStorage())
+        repo.rolloverIfNeeded()
+        repo.addReminder("Daily", "08:00", "daily", "banner")
+        val daily = repo.state.reminders.first { it.title == "Daily" }
+        repo.toggleDone(daily.id)
+        // Same day: another rollover should not wipe today's done state.
+        repo.rolloverIfNeeded()
+        assertTrue(repo.state.doneIds.contains(daily.id))
+    }
+
+    @Test
+    fun testRolloverDateRoundTrips() {
+        val storage = MockStorage()
+        val repo = ToolboxRepository(storage)
+        repo.rolloverIfNeeded()
+        val stamped = repo.state.lastRolloverDate
+        assertTrue(stamped.isNotEmpty())
+
+        val repo2 = ToolboxRepository(storage)
+        assertEquals(stamped, repo2.state.lastRolloverDate)
+    }
+
+    @Test
+    fun testUpdatedAtStampedOnMutationAndRoundTrips() {
+        val storage = MockStorage()
+        val repo = ToolboxRepository(storage)
+        // Fresh seed has never been stamped.
+        assertEquals(0L, repo.state.updatedAt)
+
+        repo.addShoppingItem("Marker", "1")
+        assertTrue(repo.state.updatedAt > 0L, "mutation should stamp updatedAt")
+
+        // Persisted timestamp survives a reload.
+        val repo2 = ToolboxRepository(storage)
+        assertEquals(repo.state.updatedAt, repo2.state.updatedAt)
     }
 
     @Test
@@ -220,7 +281,10 @@ class ToolboxRepositoryTest {
     @Test
     fun testSendRecipeToShoppingListOnlyAddsMissing() {
         val repo = ToolboxRepository(MockStorage())
-        // "Tofu" is already in the seeded fridge; "Coffee beans" is on the list
+        // Set up the scenario explicitly so it doesn't depend on seed contents:
+        // "Tofu" is in the fridge; "Coffee beans" is already on the list.
+        repo.addFridge("Tofu", "1 block", "2026-12-31", "fridge")
+        repo.addShoppingItem("Coffee beans", "1 bag")
         repo.addRecipe(
             "Test meal",
             listOf(

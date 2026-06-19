@@ -45,4 +45,15 @@ actual object DateUtils {
         val components = calendar.components(NSCalendarUnitHour, NSDate())
         return components.hour.toInt()
     }
+
+    actual fun epochMillis(): Long {
+        return (NSDate().timeIntervalSince1970 * 1000.0).toLong()
+    }
+
+    actual fun isTodayWeekend(): Boolean {
+        val calendar = NSCalendar.currentCalendar
+        // NSCalendar weekday: 1 = Sunday … 7 = Saturday
+        val weekday = calendar.components(NSCalendarUnitWeekday, NSDate()).weekday
+        return weekday == 1L || weekday == 7L
+    }
 }

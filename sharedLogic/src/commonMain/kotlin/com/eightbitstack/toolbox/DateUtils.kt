@@ -7,4 +7,6 @@ expect object DateUtils {
     fun daysUntil(expiry: String): Int
     fun getTodayFormatted(): String
     fun getCurrentHour(): Int
+    fun epochMillis(): Long
+    fun isTodayWeekend(): Boolean
 }

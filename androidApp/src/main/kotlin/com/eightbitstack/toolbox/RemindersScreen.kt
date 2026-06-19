@@ -15,9 +15,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.Intent
+import android.provider.Settings
+import androidx.core.app.NotificationManagerCompat
 
 @Composable
 fun RemindersScreen(
@@ -32,6 +36,10 @@ fun RemindersScreen(
     var expandedId by remember { mutableStateOf<String?>(null) }
     var sheetOpen by remember { mutableStateOf(false) }
     var editFor by remember { mutableStateOf<Reminder?>(null) }
+
+    val context = LocalContext.current
+    // Re-read on each (re)composition so it refreshes when the screen is reopened.
+    val notificationsEnabled = NotificationManagerCompat.from(context).areNotificationsEnabled()
 
     val all = state.reminders
     val counts = mapOf(
@@ -118,6 +126,53 @@ fun RemindersScreen(
                             }
                             Toggle(value = state.quietHoursOn, onChange = onSetQuiet, size = "sm")
                         }
+                    }
+                }
+            }
+
+            // Notifications-off warning — reminders won't actually alert without it
+            if (!notificationsEnabled) {
+                item {
+                    Row(
+                        modifier = Modifier
+                            .padding(horizontal = 8.dp)
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(ToolboxTheme.danger.copy(alpha = 0.12f))
+                            .border(1.dp, ToolboxTheme.danger.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                            Text("🔔", fontSize = 16.sp)
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "Notifications are off",
+                                    fontFamily = ToolboxTheme.sans,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    color = ToolboxTheme.ink
+                                )
+                                Text(
+                                    text = "Reminders won't alert you until you turn them on.",
+                                    fontFamily = ToolboxTheme.sans,
+                                    fontSize = 11.sp,
+                                    color = ToolboxTheme.inkSoft
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        ChunkyButton(
+                            onClick = {
+                                val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                    .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                context.startActivity(intent)
+                            },
+                            text = "Enable",
+                            size = "sm"
+                        )
                     }
                 }
             }

@@ -24,6 +24,7 @@ fun HomeScreen(
     state: ToolboxState,
     onNavigate: (String) -> Unit,
     onToggleReminder: (String) -> Unit,
+    onOpenSettings: () -> Unit,
     showFlourishes: Boolean
 ) {
     val todayReminders = state.reminders
@@ -97,30 +98,47 @@ fun HomeScreen(
 
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.padding(start = 6.dp)
                     ) {
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(10.dp)) {
-                            Box(
-                                modifier = Modifier
-                                    .size(6.dp)
-                                    .graphicsLayer(
-                                        scaleX = pulseScale,
-                                        scaleY = pulseScale,
-                                        alpha = pulseAlpha
-                                    )
-                                    .background(ToolboxTheme.ok, CircleShape)
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .size(6.dp)
-                                    .background(ToolboxTheme.ok, CircleShape)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(10.dp)) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .graphicsLayer(
+                                            scaleX = pulseScale,
+                                            scaleY = pulseScale,
+                                            alpha = pulseAlpha
+                                        )
+                                        .background(ToolboxTheme.ok, CircleShape)
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .background(ToolboxTheme.ok, CircleShape)
+                                )
+                            }
+                            Kicker(
+                                text = "Online",
+                                color = ToolboxTheme.ok
                             )
                         }
-                        Kicker(
-                            text = "Online",
-                            color = ToolboxTheme.ok
-                        )
+                        // Settings entry point (no longer a bottom tab)
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(ToolboxTheme.surface)
+                                .border(1.dp, ToolboxTheme.line, RoundedCornerShape(10.dp))
+                                .clickable { onOpenSettings() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("⚙", fontSize = 16.sp, color = ToolboxTheme.inkMute)
+                        }
                     }
                 }
                 Spacer(modifier = Modifier.height(14.dp))

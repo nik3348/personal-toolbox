@@ -30,4 +30,13 @@ actual object DateUtils {
     actual fun getCurrentHour(): Int {
         return LocalTime.now().hour
     }
+
+    actual fun epochMillis(): Long {
+        return System.currentTimeMillis()
+    }
+
+    actual fun isTodayWeekend(): Boolean {
+        val day = LocalDate.now().dayOfWeek
+        return day == java.time.DayOfWeek.SATURDAY || day == java.time.DayOfWeek.SUNDAY
+    }
 }

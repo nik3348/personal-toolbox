@@ -19,7 +19,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
+fun App(
+    onDarkModeChanged: ((Boolean) -> Unit)? = null,
+    requestedTab: String? = null,
+    onRequestedTabHandled: () -> Unit = {}
+) {
     val repository = remember { ToolboxRepository() }
     var appState by remember { mutableStateOf(repository.state) }
     val appContext = androidx.compose.ui.platform.LocalContext.current.applicationContext
@@ -32,12 +36,23 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
             }
         }
         repository.addListener(listener)
+        // Reconcile per-day reminder state (clears yesterday's checkmarks, etc.)
+        repository.rolloverIfNeeded()
         onDispose {
             repository.removeListener(listener)
         }
     }
 
     var activeTab by remember { mutableStateOf("home") }
+
+    // Deep link from a tapped reminder notification. Consuming it resets the request
+    // to null so the next tap (even for the same tab) re-triggers this effect.
+    LaunchedEffect(requestedTab) {
+        if (requestedTab != null) {
+            activeTab = requestedTab
+            onRequestedTabHandled()
+        }
+    }
 
     // Appearance settings live in ToolboxState so they persist across launches
     val settings = appState.settings
@@ -99,6 +114,7 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                         state = appState,
                         onNavigate = { activeTab = it },
                         onToggleReminder = { repository.toggleDone(it) },
+                        onOpenSettings = { activeTab = "me" },
                         showFlourishes = showFlourishes
                     )
                     "reminders" -> RemindersScreen(
@@ -160,6 +176,7 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                         onSendToShoppingList = { repository.sendRecipeToShoppingList(it) }
                     )
                     "me" -> MeScreen(
+                        onBack = { activeTab = "home" },
                         onReset = { repository.reset() },
                         accent = accent,
                         onAccentChange = { repository.setAccent(it) },
@@ -195,9 +212,7 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                         Triple("home", "Home", "🏠"),
                         Triple("reminders", "Quiet", "🔕"),
                         Triple("fridge", "Fridge", "❄"),
-                        Triple("shopping", "List", "🛒"),
-                        Triple("recipes", "Cook", "🍳"),
-                        Triple("me", "Me", "👤")
+                        Triple("shopping", "List", "🛒")
                     )
 
                     tabs.forEach { (tabId, label, emoji) ->
