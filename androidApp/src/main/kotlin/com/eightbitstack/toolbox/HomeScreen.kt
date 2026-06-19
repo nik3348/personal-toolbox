@@ -306,6 +306,53 @@ fun HomeScreen(
             }
         }
 
+        // Today's meals widget
+        item {
+            val today = DateUtils.getTodayPlusDays(0)
+            val todaysMeals = MEAL_SLOTS.mapNotNull { (slotId, slotLabel) ->
+                val entry = state.mealPlan.firstOrNull { it.date == today && it.slot == slotId }
+                val recipe = entry?.let { e -> state.recipes.firstOrNull { it.id == e.recipeId } }
+                if (recipe != null) slotLabel to recipe.name else null
+            }
+            DashWidget(
+                kicker = "Today's meals",
+                kickerColor = ToolboxTheme.fridgeAccent,
+                countText = "${todaysMeals.size} planned",
+                onOpen = { onNavigate("mealplanner") },
+                isEmpty = todaysMeals.isEmpty(),
+                emptyMsg = "No meals planned today. Tap to plan."
+            ) {
+                Column {
+                    todaysMeals.forEach { (slotLabel, name) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = slotLabel.uppercase(),
+                                fontFamily = ToolboxTheme.mono,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.6.sp,
+                                color = ToolboxTheme.inkMute,
+                                modifier = Modifier.width(72.dp)
+                            )
+                            Text(
+                                text = name,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = ToolboxTheme.ink,
+                                maxLines = 1,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         // Shopping List widget
         item {
             val uncheckedCount = state.shoppingList.count { !it.checked }
@@ -417,14 +464,28 @@ fun HomeScreen(
                         modifier = Modifier.weight(1f)
                     )
                     ToolTile(
-                        label = "Timers",
-                        sub = "Coming next",
-                        color = ToolboxTheme.inkMute,
-                        tint = ToolboxTheme.bgSubtle,
-                        onClick = {},
-                        disabled = true,
+                        label = "Recipes",
+                        sub = "${state.recipes.size} saved",
+                        color = ToolboxTheme.activePalette.primary,
+                        tint = ToolboxTheme.activePalette.tint,
+                        onClick = { onNavigate("recipes") },
                         modifier = Modifier.weight(1f)
                     )
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    ToolTile(
+                        label = "Meal Planner",
+                        sub = "Plan the week",
+                        color = ToolboxTheme.fridgeAccent,
+                        tint = ToolboxTheme.fridgeTint,
+                        onClick = { onNavigate("mealplanner") },
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
                 }
             }
         }
@@ -499,7 +560,9 @@ fun ToolTile(
                 Text(
                     text = when {
                         label.contains("Fridge") -> "❄"
-                        label.contains("List") -> "🛒"
+                        label.contains("Shopping") || label.contains("List") -> "🛒"
+                        label.contains("Recipes") -> "🍳"
+                        label.contains("Meal") -> "📅"
                         else -> "🔕"
                     },
                     fontSize = 20.sp,

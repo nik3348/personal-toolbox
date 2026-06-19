@@ -3,6 +3,7 @@ package com.eightbitstack.toolbox
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -27,7 +28,8 @@ fun RecipesScreen(
     state: ToolboxState,
     onSaveRecipe: (id: String?, name: String, ingredients: List<RecipeIngredient>, steps: List<String>) -> Unit,
     onDeleteRecipe: (String) -> Unit,
-    onSendToShoppingList: (String) -> Unit
+    onSendToShoppingList: (String) -> Unit,
+    onAddToMealPlan: (id: String, date: String, slot: String) -> Unit
 ) {
     var editSheetOpen by remember { mutableStateOf(false) }
     var detailSheetOpen by remember { mutableStateOf(false) }
@@ -126,6 +128,7 @@ fun RecipesScreen(
             if (recipe != null) {
                 RecipeDetail(
                     recipe = recipe,
+                    fridge = state.fridge,
                     onEdit = {
                         editFor = recipe
                         detailSheetOpen = false
@@ -138,6 +141,10 @@ fun RecipesScreen(
                     },
                     onSendToShoppingList = {
                         onSendToShoppingList(recipe.id)
+                        detailSheetOpen = false
+                    },
+                    onAddToMealPlan = { date, slot ->
+                        onAddToMealPlan(recipe.id, date, slot)
                         detailSheetOpen = false
                     }
                 )
@@ -207,17 +214,35 @@ fun RecipeCard(
 @Composable
 fun RecipeDetail(
     recipe: Recipe,
+    fridge: List<FridgeItem>,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
-    onSendToShoppingList: () -> Unit
+    onSendToShoppingList: () -> Unit,
+    onAddToMealPlan: (date: String, slot: String) -> Unit
 ) {
+    val haveCount = recipe.ingredients.count { ingredientInFridge(it.name, fridge) }
+
     Column(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
         ) {
-            Kicker(text = "Ingredients", color = ToolboxTheme.inkMute)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Kicker(text = "Ingredients", color = ToolboxTheme.inkMute)
+                // Fridge have/need summary
+                Text(
+                    text = "$haveCount of ${recipe.ingredients.size} in fridge",
+                    fontFamily = ToolboxTheme.mono,
+                    fontSize = 10.sp,
+                    color = if (haveCount == recipe.ingredients.size && recipe.ingredients.isNotEmpty())
+                        ToolboxTheme.ok else ToolboxTheme.inkMute
+                )
+            }
             Spacer(modifier = Modifier.height(8.dp))
             Column(
                 modifier = Modifier
@@ -227,6 +252,7 @@ fun RecipeDetail(
                     .padding(horizontal = 14.dp, vertical = 6.dp)
             ) {
                 recipe.ingredients.forEachIndexed { index, ing ->
+                    val have = ingredientInFridge(ing.name, fridge)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -234,17 +260,25 @@ fun RecipeDetail(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = if (have) "✓" else "•",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (have) ToolboxTheme.ok else ToolboxTheme.inkMute,
+                                modifier = Modifier.width(18.dp)
+                            )
+                            Text(
+                                text = ing.name,
+                                fontSize = 14.sp,
+                                color = ToolboxTheme.ink
+                            )
+                        }
                         Text(
-                            text = ing.name,
-                            fontSize = 14.sp,
-                            color = ToolboxTheme.ink,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Text(
-                            text = ing.qty,
+                            text = if (have) "in fridge" else ing.qty,
                             fontFamily = ToolboxTheme.mono,
                             fontSize = 11.sp,
-                            color = ToolboxTheme.inkMute,
+                            color = if (have) ToolboxTheme.ok else ToolboxTheme.inkMute,
                             letterSpacing = 0.5.sp
                         )
                     }
@@ -253,6 +287,10 @@ fun RecipeDetail(
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(18.dp))
+
+            AddToPlanPanel(onAddToMealPlan = onAddToMealPlan)
 
             Spacer(modifier = Modifier.height(18.dp))
 
@@ -297,6 +335,52 @@ fun RecipeDetail(
             )
         }
         Spacer(modifier = Modifier.height(8.dp))
+    }
+}
+
+// Compact "plan this recipe onto a day + slot" picker shown inside the recipe detail.
+@Composable
+fun AddToPlanPanel(onAddToMealPlan: (date: String, slot: String) -> Unit) {
+    val days = remember { (0 until 7).map { it to DateUtils.getTodayPlusDays(it) } }
+    var selectedDate by remember { mutableStateOf(days.first().second) }
+    var selectedSlot by remember { mutableStateOf(MEAL_SLOTS.last().first) } // default dinner
+
+    Kicker(text = "Add to meal plan", color = ToolboxTheme.inkMute)
+    Spacer(modifier = Modifier.height(8.dp))
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            days.forEach { (index, date) ->
+                val label = when (index) {
+                    0 -> "Today"
+                    1 -> "Tom"
+                    else -> weekdayShort(date)
+                }
+                FilterChip(
+                    active = selectedDate == date,
+                    onClick = { selectedDate = date },
+                    text = label
+                )
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            MEAL_SLOTS.forEach { (slotId, slotLabel) ->
+                FilterChip(
+                    active = selectedSlot == slotId,
+                    onClick = { selectedSlot = slotId },
+                    text = slotLabel
+                )
+            }
+        }
+        ChunkyButton(
+            onClick = { onAddToMealPlan(selectedDate, selectedSlot) },
+            text = "Add to plan",
+            variant = "outline",
+            size = "sm",
+            icon = { Text("📅", fontSize = 12.sp) }
+        )
     }
 }
 

@@ -304,6 +304,66 @@ class ToolboxRepositoryTest {
     }
 
     @Test
+    fun testSetMealSlotUpsertsOnePerSlot() {
+        val repo = ToolboxRepository(MockStorage())
+        val date = DateUtils.getTodayPlusDays(1)
+        repo.setMealSlot(date, "dinner", "rc1")
+        assertEquals(1, repo.state.mealPlan.count { it.date == date && it.slot == "dinner" })
+        // Re-assigning the same slot replaces, not appends.
+        repo.setMealSlot(date, "dinner", "rc2")
+        val slot = repo.state.mealPlan.filter { it.date == date && it.slot == "dinner" }
+        assertEquals(1, slot.size)
+        assertEquals("rc2", slot.first().recipeId)
+        // A different slot on the same day coexists.
+        repo.setMealSlot(date, "lunch", "rc1")
+        assertEquals(2, repo.state.mealPlan.count { it.date == date })
+        // Clearing removes just that slot.
+        repo.clearMealSlot(date, "dinner")
+        assertTrue(repo.state.mealPlan.none { it.date == date && it.slot == "dinner" })
+        assertEquals(1, repo.state.mealPlan.count { it.date == date && it.slot == "lunch" })
+    }
+
+    @Test
+    fun testSendPlannedMealsAddsMissingIngredientsForWindow() {
+        val repo = ToolboxRepository(MockStorage())
+        repo.addFridge("Eggs", "6", "2026-12-31", "fridge")
+        repo.addRecipe("Omelette", listOf(RecipeIngredient("Eggs", "3"), RecipeIngredient("Cheese", "50 g")), listOf("Cook."))
+        val omelette = repo.state.recipes.first { it.name == "Omelette" }
+        repo.setMealSlot(DateUtils.getTodayPlusDays(2), "breakfast", omelette.id)
+        // A recipe planned outside the 7-day window must be ignored.
+        repo.addRecipe("FarOff", listOf(RecipeIngredient("Truffle", "1")), listOf("Cook."))
+        val farOff = repo.state.recipes.first { it.name == "FarOff" }
+        repo.setMealSlot(DateUtils.getTodayPlusDays(30), "dinner", farOff.id)
+
+        repo.sendPlannedMealsToShoppingList(days = 7)
+
+        assertTrue(repo.state.shoppingList.any { it.name == "Cheese" && !it.checked }) // missing -> added
+        assertTrue(repo.state.shoppingList.none { it.name == "Eggs" })   // in fridge -> skipped
+        assertTrue(repo.state.shoppingList.none { it.name == "Truffle" }) // outside window -> skipped
+    }
+
+    @Test
+    fun testMealPlanRoundTrips() {
+        val storage = MockStorage()
+        val repo = ToolboxRepository(storage)
+        val date = DateUtils.getTodayPlusDays(3)
+        repo.setMealSlot(date, "dinner", "rc1")
+
+        val repo2 = ToolboxRepository(storage)
+        val entry = repo2.state.mealPlan.firstOrNull { it.date == date && it.slot == "dinner" }
+        assertTrue(entry != null)
+        assertEquals("rc1", entry.recipeId)
+    }
+
+    @Test
+    fun testIngredientInFridgeHelper() {
+        val fridge = listOf(FridgeItem("f1", "  Milk ", "1", "2026-12-31", "fridge"))
+        assertTrue(ingredientInFridge("milk", fridge))
+        assertTrue(!ingredientInFridge("Bread", fridge))
+        assertTrue(!ingredientInFridge("  ", fridge))
+    }
+
+    @Test
     fun testGarbageStorageDoesNotCrash() {
         val storage = MockStorage()
         storage.saveString("toolbox-state-v1", "not a valid state\n[GARBAGE]\n???|x")

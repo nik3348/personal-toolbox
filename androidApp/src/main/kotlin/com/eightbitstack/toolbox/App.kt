@@ -173,7 +173,14 @@ fun App(
                             }
                         },
                         onDeleteRecipe = { repository.deleteRecipe(it) },
-                        onSendToShoppingList = { repository.sendRecipeToShoppingList(it) }
+                        onSendToShoppingList = { repository.sendRecipeToShoppingList(it) },
+                        onAddToMealPlan = { id, date, slot -> repository.setMealSlot(date, slot, id) }
+                    )
+                    "mealplanner" -> MealPlannerScreen(
+                        state = appState,
+                        onSetMealSlot = { date, slot, recipeId -> repository.setMealSlot(date, slot, recipeId) },
+                        onClearMealSlot = { date, slot -> repository.clearMealSlot(date, slot) },
+                        onSendWeekToShopping = { repository.sendPlannedMealsToShoppingList() }
                     )
                     "me" -> MeScreen(
                         onBack = { activeTab = "home" },

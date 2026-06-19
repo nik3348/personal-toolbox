@@ -44,6 +44,29 @@ data class MealPlanEntry(
     val recipeId: String
 )
 
+/** True if a fridge item matches this ingredient by name (case/whitespace-insensitive).
+ *  Shared by both platforms' recipe "have / need" displays. */
+fun ingredientInFridge(name: String, fridge: List<FridgeItem>): Boolean {
+    val key = name.trim().lowercase()
+    return key.isNotEmpty() && fridge.any { it.name.trim().lowercase() == key }
+}
+
+/** Short weekday name ("Mon".."Sun") for a "YYYY-MM-DD" string, computed purely
+ *  (Zeller's congruence) so it needs no platform date APIs. Empty if unparseable. */
+fun weekdayShort(date: String): String {
+    val p = date.split("-")
+    val y = p.getOrNull(0)?.toIntOrNull() ?: return ""
+    var m = p.getOrNull(1)?.toIntOrNull() ?: return ""
+    val d = p.getOrNull(2)?.toIntOrNull() ?: return ""
+    var yy = y
+    if (m < 3) { m += 12; yy -= 1 }
+    val k = yy % 100
+    val j = yy / 100
+    val h = (d + (13 * (m + 1)) / 5 + k + k / 4 + j / 4 + 5 * j) % 7
+    // Zeller h: 0=Sat,1=Sun,2=Mon,...,6=Fri
+    return listOf("Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri")[h]
+}
+
 data class AppSettings(
     val accent: String = "indigo",
     val darkMode: Boolean = false,

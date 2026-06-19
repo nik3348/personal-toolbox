@@ -193,6 +193,38 @@ class ToolboxRepository(private val storage: StorageProvider = KeyValueStorage()
         state = state.copy(shoppingList = state.shoppingList + newItems)
     }
 
+    // --- Meal planner ---
+
+    /** Assigns a recipe to a day's slot, replacing whatever was there (one per slot). */
+    fun setMealSlot(date: String, slot: String, recipeId: String) {
+        val others = state.mealPlan.filter { !(it.date == date && it.slot == slot) }
+        val entry = MealPlanEntry("mp_" + getUniqueId(), date, slot, recipeId)
+        state = state.copy(mealPlan = others + entry)
+    }
+
+    fun clearMealSlot(date: String, slot: String) {
+        state = state.copy(mealPlan = state.mealPlan.filter { !(it.date == date && it.slot == slot) })
+    }
+
+    /** Adds the ingredients of every recipe planned in the next [days] days to the
+     *  shopping list, smart-skipping anything already in the fridge or on the list. */
+    fun sendPlannedMealsToShoppingList(days: Int = 7) {
+        val window = (0 until days).map { DateUtils.getTodayPlusDays(it) }.toSet()
+        val recipeIds = state.mealPlan.filter { it.date in window }.map { it.recipeId }.toSet()
+        if (recipeIds.isEmpty()) return
+        val ingredients = state.recipes.filter { it.id in recipeIds }.flatMap { it.ingredients }
+        val existingNames = (state.fridge.map { it.name.trim().lowercase() } +
+            state.shoppingList.filter { !it.checked }.map { it.name.trim().lowercase() }).toSet()
+        val seen = mutableSetOf<String>()
+        val missing = ingredients.filter {
+            val key = it.name.trim().lowercase()
+            it.name.trim().isNotEmpty() && key !in existingNames && seen.add(key)
+        }
+        if (missing.isEmpty()) return
+        val newItems = missing.map { ShoppingListItem("s_" + getUniqueId(), it.name.trim(), it.qty.trim().ifEmpty { "1" }, checked = false) }
+        state = state.copy(shoppingList = state.shoppingList + newItems)
+    }
+
     fun setAccent(accent: String) {
         state = state.copy(settings = state.settings.copy(accent = accent))
     }

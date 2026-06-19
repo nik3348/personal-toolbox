@@ -162,6 +162,28 @@ let repeatOptions: [(value: String, label: String)] = [
     ("", "once"), ("daily", "daily"), ("weekdays", "weekdays"), ("weekly", "weekly"), ("monthly", "monthly")
 ]
 let fridgeLocations = ["fridge", "freezer", "pantry"]
+let mealSlots: [(key: String, label: String)] = [
+    ("breakfast", "Breakfast"), ("lunch", "Lunch"), ("dinner", "Dinner")
+]
+
+// Swift mirrors of the shared helpers (logic identical to Models.kt's
+// ingredientInFridge / weekdayShort) to avoid cross-language top-level calls.
+func fridgeHasIngredient(_ name: String, _ fridge: [FridgeItem]) -> Bool {
+    let key = name.trimmingCharacters(in: .whitespaces).lowercased()
+    return !key.isEmpty && fridge.contains { $0.name.trimmingCharacters(in: .whitespaces).lowercased() == key }
+}
+
+func weekdayShort(_ date: String) -> String {
+    let p = date.split(separator: "-").map { Int($0) ?? -1 }
+    guard p.count == 3, !p.contains(-1) else { return "" }
+    var (y, m, d) = (p[0], p[1], p[2])
+    if m < 3 { m += 12; y -= 1 }
+    let k = y % 100, j = y / 100
+    let h = ((d + (13 * (m + 1)) / 5 + k + k / 4 + j / 4 + 5 * j) % 7 + 7) % 7
+    return ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"][h]
+}
+
+extension Recipe: Identifiable {}
 
 // MARK: State Observer matching Kotlin Repository State
 
@@ -217,6 +239,23 @@ class ToolboxObservableState: ObservableObject, ToolboxRepositoryListener {
     func purchaseCheckedShoppingItems(location: String, expiry: String) {
         repo.purchaseCheckedShoppingItems(location: location, expiry: expiry)
     }
+    func addRecipe(name: String, ingredients: [RecipeIngredient], steps: [String]) {
+        repo.addRecipe(name: name, ingredients: ingredients, steps: steps)
+    }
+    func updateRecipe(id: String, name: String, ingredients: [RecipeIngredient], steps: [String]) {
+        repo.updateRecipe(id: id, name: name, ingredients: ingredients, steps: steps)
+    }
+    func deleteRecipe(id: String) { repo.deleteRecipe(id: id) }
+    func sendRecipeToShoppingList(id: String) { repo.sendRecipeToShoppingList(id: id) }
+    func setMealSlot(date: String, slot: String, recipeId: String) {
+        repo.setMealSlot(date: date, slot: slot, recipeId: recipeId)
+    }
+    func clearMealSlot(date: String, slot: String) {
+        repo.clearMealSlot(date: date, slot: slot)
+    }
+    func sendPlannedMealsToShoppingList() {
+        repo.sendPlannedMealsToShoppingList(days: 7)
+    }
     func reset() { repo.reset() }
     func setQuiet(on: Bool) { repo.setQuiet(on: on) }
     func setAccent(accent: String) { repo.setAccent(accent: accent) }
@@ -264,6 +303,10 @@ struct ContentView: View {
                         SwiftFridgeScreen(store: store, palette: currentPalette, theme: theme)
                     } else if activeTab == "shopping" {
                         SwiftShoppingScreen(store: store, palette: currentPalette, theme: theme)
+                    } else if activeTab == "recipes" {
+                        SwiftRecipesScreen(store: store, palette: currentPalette, theme: theme)
+                    } else if activeTab == "mealplanner" {
+                        SwiftMealPlannerScreen(store: store, palette: currentPalette, theme: theme)
                     } else if activeTab == "me" {
                         SwiftMeScreen(
                             store: store,
@@ -608,6 +651,31 @@ struct SwiftHomeScreen: View {
                     }
                 }
 
+                // Today's meals
+                let today = DateUtils.shared.getTodayPlusDays(days: 0)
+                let todaysMeals: [(String, String)] = mealSlots.compactMap { s in
+                    guard let entry = store.state.mealPlan.first(where: { $0.date == today && $0.slot == s.key }),
+                          let recipe = store.state.recipes.first(where: { $0.id == entry.recipeId }) else { return nil }
+                    return (s.label, recipe.name)
+                }
+                dashCard(kicker: "Today's meals", kickerColor: theme.fridgeAccent,
+                         count: "\(todaysMeals.count) planned",
+                         onOpen: { activeTab = "mealplanner" }) {
+                    if todaysMeals.isEmpty {
+                        Text("No meals planned today. Tap to plan.")
+                            .font(.subheadline).foregroundColor(theme.inkMute)
+                    } else {
+                        ForEach(Array(todaysMeals.enumerated()), id: \.offset) { _, m in
+                            HStack {
+                                Text(m.0.uppercased()).font(.system(size: 9, weight: .bold, design: .monospaced))
+                                    .foregroundColor(theme.inkMute).frame(width: 72, alignment: .leading)
+                                Text(m.1).fontWeight(.semibold).foregroundColor(theme.ink)
+                                Spacer()
+                            }.padding(.vertical, 6)
+                        }
+                    }
+                }
+
                 // Shopping
                 let uncheckedItems = store.state.shoppingList.filter { !$0.checked }
                 dashCard(kicker: "Shopping list", kickerColor: theme.shoppingAccent,
@@ -639,7 +707,11 @@ struct SwiftHomeScreen: View {
                     }
                     HStack(spacing: 12) {
                         toolTile(label: "Shopping", sub: "\(uncheckedItems.count) items left", emoji: "🛒", color: theme.shoppingAccent, tint: theme.shoppingTint, tab: "shopping")
-                        toolTile(label: "Timers", sub: "Coming next", emoji: "⏱", color: theme.inkMute, tint: theme.bgSubtle, tab: nil)
+                        toolTile(label: "Recipes", sub: "\(store.state.recipes.count) saved", emoji: "🍳", color: palette.primary, tint: theme.paletteTint(palette), tab: "recipes")
+                    }
+                    HStack(spacing: 12) {
+                        toolTile(label: "Meal Planner", sub: "Plan the week", emoji: "📅", color: theme.fridgeAccent, tint: theme.fridgeTint, tab: "mealplanner")
+                        Color.clear.frame(maxWidth: .infinity)
                     }
                 }
             }
@@ -1349,6 +1421,390 @@ struct SendToFridgeView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label).font(.system(size: 12, weight: .bold)).foregroundColor(theme.inkMute)
             content()
+        }
+    }
+}
+
+// MARK: Recipes
+
+struct SwiftRecipesScreen: View {
+    @ObservedObject var store: ToolboxObservableState
+    let palette: SwiftBrandPalette
+    let theme: SwiftTheme
+
+    @State private var detail: Recipe? = nil
+    @State private var editing: Recipe? = nil
+    @State private var showForm = false
+
+    var recipes: [Recipe] { store.state.recipes.sorted { $0.name.lowercased() < $1.name.lowercased() } }
+
+    var body: some View {
+        ZStack(alignment: .bottomTrailing) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        SwiftKicker(text: "\(recipes.count) saved", color: palette.primary)
+                        Text("Recipes").font(.system(.largeTitle, design: .serif)).foregroundColor(theme.ink)
+                    }.padding(.top, 8)
+
+                    if recipes.isEmpty {
+                        Text("No recipes yet. Tap + to save your first one.")
+                            .font(.subheadline).foregroundColor(theme.inkMute)
+                            .frame(maxWidth: .infinity).padding(.vertical, 40)
+                            .overlay(RoundedRectangle(cornerRadius: 14).stroke(theme.line, lineWidth: 1.5))
+                    }
+                    ForEach(recipes, id: \.id) { r in
+                        Button(action: { detail = r }) { recipeRow(r) }.buttonStyle(PlainButtonStyle())
+                    }
+                }
+                .padding(.horizontal).padding(.bottom, 110)
+            }
+            SwiftChunkyButton(text: "+ Recipe", palette: palette, size: "sm") {
+                editing = nil; showForm = true
+            }.padding(.trailing, 16).padding(.bottom, 96)
+        }
+        .sheet(item: $detail) { r in
+            RecipeDetailView(
+                store: store, recipe: r, palette: palette, theme: theme,
+                onEdit: { editing = r; detail = nil; showForm = true },
+                onClose: { detail = nil }
+            )
+        }
+        .sheet(isPresented: $showForm) {
+            RecipeFormView(palette: palette, theme: theme, initial: editing) { name, ingredients, steps in
+                if let e = editing {
+                    store.updateRecipe(id: e.id, name: name, ingredients: ingredients, steps: steps)
+                } else {
+                    store.addRecipe(name: name, ingredients: ingredients, steps: steps)
+                }
+                showForm = false
+            } onCancel: { showForm = false }
+        }
+    }
+
+    func recipeRow(_ r: Recipe) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(r.name).fontWeight(.semibold).foregroundColor(theme.ink)
+                Text("\(r.ingredients.count) ingredients · \(r.steps.count) steps")
+                    .font(.caption).foregroundColor(theme.inkMute)
+            }
+            Spacer()
+            Image(systemName: "chevron.right").foregroundColor(theme.inkMute).font(.caption)
+        }
+        .padding().toolboxCard(theme, radius: 14)
+    }
+}
+
+struct RecipeDetailView: View {
+    @ObservedObject var store: ToolboxObservableState
+    let recipe: Recipe
+    let palette: SwiftBrandPalette
+    let theme: SwiftTheme
+    let onEdit: () -> Void
+    let onClose: () -> Void
+
+    @State private var planDate = ""
+    @State private var planSlot = "dinner"
+
+    var haveCount: Int {
+        recipe.ingredients.filter { fridgeHasIngredient($0.name, store.state.fridge) }.count
+    }
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack {
+                        SwiftKicker(text: "Ingredients", color: theme.inkMute)
+                        Spacer()
+                        Text("\(haveCount) of \(recipe.ingredients.count) in fridge")
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(haveCount == recipe.ingredients.count && !recipe.ingredients.isEmpty ? SwiftTheme.ok : theme.inkMute)
+                    }
+                    VStack(spacing: 0) {
+                        ForEach(Array(recipe.ingredients.enumerated()), id: \.offset) { idx, ing in
+                            let have = fridgeHasIngredient(ing.name, store.state.fridge)
+                            HStack {
+                                Text(have ? "✓" : "•").fontWeight(.bold)
+                                    .foregroundColor(have ? SwiftTheme.ok : theme.inkMute).frame(width: 16)
+                                Text(ing.name).foregroundColor(theme.ink)
+                                Spacer()
+                                Text(have ? "in fridge" : ing.qty)
+                                    .font(.system(size: 11, design: .monospaced))
+                                    .foregroundColor(have ? SwiftTheme.ok : theme.inkMute)
+                            }
+                            .padding(.vertical, 8)
+                            if idx != recipe.ingredients.count - 1 { Divider() }
+                        }
+                    }
+                    .padding(.horizontal, 14).background(theme.bgSubtle).cornerRadius(12)
+
+                    SwiftKicker(text: "Add to meal plan", color: theme.inkMute)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            ForEach(0..<7, id: \.self) { i in
+                                let date = DateUtils.shared.getTodayPlusDays(days: Int32(i))
+                                let label = i == 0 ? "Today" : (i == 1 ? "Tom" : weekdayShort(date))
+                                SwiftChip(label: label, active: planDate == date, palette: palette, theme: theme) { planDate = date }
+                            }
+                        }
+                    }
+                    HStack(spacing: 6) {
+                        ForEach(mealSlots, id: \.key) { s in
+                            SwiftChip(label: s.label, active: planSlot == s.key, palette: palette, theme: theme) { planSlot = s.key }
+                        }
+                    }
+                    SwiftChunkyButton(text: "📅 Add to plan", palette: palette, variant: "outline", size: "sm") {
+                        store.setMealSlot(date: planDate, slot: planSlot, recipeId: recipe.id)
+                        onClose()
+                    }
+
+                    if !recipe.steps.isEmpty {
+                        SwiftKicker(text: "Steps", color: theme.inkMute)
+                        ForEach(Array(recipe.steps.enumerated()), id: \.offset) { idx, step in
+                            HStack(alignment: .top, spacing: 10) {
+                                Text(String(format: "%02d", idx + 1))
+                                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                    .foregroundColor(palette.primary)
+                                Text(step).font(.system(size: 14)).foregroundColor(theme.inkSoft)
+                            }
+                        }
+                    }
+
+                    HStack(spacing: 8) {
+                        SwiftChunkyButton(text: "Edit", palette: palette, variant: "outline", size: "sm", action: onEdit)
+                        SwiftChunkyButton(text: "🛒 To list", palette: palette, size: "sm") {
+                            store.sendRecipeToShoppingList(id: recipe.id); onClose()
+                        }
+                        Spacer()
+                        SwiftChunkyButton(text: "Delete", palette: palette, variant: "ghost", size: "sm") {
+                            store.deleteRecipe(id: recipe.id); onClose()
+                        }
+                    }
+                }
+                .padding()
+            }
+            .background(theme.bgSubtle.ignoresSafeArea())
+            .navigationTitle(recipe.name)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done", action: onClose) } }
+        }
+        .onAppear { if planDate.isEmpty { planDate = DateUtils.shared.getTodayPlusDays(days: 0) } }
+    }
+}
+
+struct EditableIngredient: Identifiable {
+    let id = UUID()
+    var name: String = ""
+    var qty: String = ""
+}
+struct EditableStep: Identifiable {
+    let id = UUID()
+    var text: String = ""
+}
+
+struct RecipeFormView: View {
+    let palette: SwiftBrandPalette
+    let theme: SwiftTheme
+    let initial: Recipe?
+    let onSave: (String, [RecipeIngredient], [String]) -> Void
+    let onCancel: () -> Void
+
+    @State private var name = ""
+    @State private var ingredients: [EditableIngredient] = [EditableIngredient()]
+    @State private var steps: [EditableStep] = [EditableStep()]
+
+    var canSave: Bool {
+        !name.trimmingCharacters(in: .whitespaces).isEmpty &&
+        ingredients.contains { !$0.name.trimmingCharacters(in: .whitespaces).isEmpty }
+    }
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    field("Name") {
+                        TextField("Garlic pasta", text: $name).textFieldStyle(RoundedBorderTextFieldStyle())
+                    }
+                    field("Ingredients") {
+                        VStack(spacing: 6) {
+                            ForEach(ingredients.indices, id: \.self) { idx in
+                                HStack {
+                                    TextField("Spaghetti", text: $ingredients[idx].name).textFieldStyle(RoundedBorderTextFieldStyle())
+                                    TextField("200 g", text: $ingredients[idx].qty).textFieldStyle(RoundedBorderTextFieldStyle()).frame(width: 80)
+                                    Button(action: {
+                                        if ingredients.count > 1 { ingredients.remove(at: idx) } else { ingredients[0] = EditableIngredient() }
+                                    }) { Image(systemName: "xmark.circle.fill").foregroundColor(theme.inkMute) }
+                                    .buttonStyle(PlainButtonStyle())
+                                }
+                            }
+                            Button("+ Ingredient") { ingredients.append(EditableIngredient()) }
+                                .font(.caption).foregroundColor(palette.primary)
+                        }
+                    }
+                    field("Steps") {
+                        VStack(spacing: 6) {
+                            ForEach(steps.indices, id: \.self) { idx in
+                                HStack {
+                                    Text(String(format: "%02d", idx + 1))
+                                        .font(.system(size: 12, weight: .bold, design: .monospaced)).foregroundColor(palette.primary)
+                                    TextField("Boil the pasta", text: $steps[idx].text).textFieldStyle(RoundedBorderTextFieldStyle())
+                                    Button(action: {
+                                        if steps.count > 1 { steps.remove(at: idx) } else { steps[0] = EditableStep() }
+                                    }) { Image(systemName: "xmark.circle.fill").foregroundColor(theme.inkMute) }
+                                    .buttonStyle(PlainButtonStyle())
+                                }
+                            }
+                            Button("+ Step") { steps.append(EditableStep()) }
+                                .font(.caption).foregroundColor(palette.primary)
+                        }
+                    }
+                }
+                .padding()
+            }
+            .background(theme.bgSubtle.ignoresSafeArea())
+            .navigationTitle(initial != nil ? "Edit recipe" : "New recipe")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel", action: onCancel) }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        let cleanIng = ingredients
+                            .filter { !$0.name.trimmingCharacters(in: .whitespaces).isEmpty }
+                            .map { RecipeIngredient(name: $0.name.trimmingCharacters(in: .whitespaces), qty: $0.qty.trimmingCharacters(in: .whitespaces)) }
+                        let cleanSteps = steps.map { $0.text.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+                        onSave(name.trimmingCharacters(in: .whitespaces), cleanIng, cleanSteps)
+                    }.disabled(!canSave)
+                }
+            }
+        }
+        .onAppear {
+            if let r = initial {
+                name = r.name
+                ingredients = r.ingredients.isEmpty ? [EditableIngredient()] : r.ingredients.map { EditableIngredient(name: $0.name, qty: $0.qty) }
+                steps = r.steps.isEmpty ? [EditableStep()] : r.steps.map { EditableStep(text: $0) }
+            }
+        }
+    }
+
+    @ViewBuilder
+    func field<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label).font(.system(size: 12, weight: .bold)).foregroundColor(theme.inkMute)
+            content()
+        }
+    }
+}
+
+// MARK: Meal planner
+
+struct MealSlotRef: Identifiable {
+    let date: String
+    let slot: String
+    var id: String { "\(date)-\(slot)" }
+}
+
+struct SwiftMealPlannerScreen: View {
+    @ObservedObject var store: ToolboxObservableState
+    let palette: SwiftBrandPalette
+    let theme: SwiftTheme
+
+    @State private var picking: MealSlotRef? = nil
+
+    var days: [String] { (0..<7).map { DateUtils.shared.getTodayPlusDays(days: Int32($0)) } }
+
+    func entryFor(_ date: String, _ slot: String) -> MealPlanEntry? {
+        store.state.mealPlan.first { $0.date == date && $0.slot == slot }
+    }
+    func recipeName(_ id: String) -> String? { store.state.recipes.first { $0.id == id }?.name }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        SwiftKicker(text: "Next 7 days", color: palette.primary)
+                        Text("Meal planner").font(.system(.largeTitle, design: .serif)).foregroundColor(theme.ink)
+                    }
+                    Spacer()
+                    if !store.state.mealPlan.isEmpty {
+                        Button("🛒 To list") { store.sendPlannedMealsToShoppingList() }
+                            .font(.caption).foregroundColor(palette.primary)
+                    }
+                }.padding(.top, 8)
+
+                if store.state.recipes.isEmpty {
+                    Text("Save a recipe first, then plan it onto a day.")
+                        .font(.subheadline).foregroundColor(theme.inkMute)
+                        .frame(maxWidth: .infinity).padding(.vertical, 40)
+                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(theme.line, lineWidth: 1.5))
+                } else {
+                    ForEach(Array(days.enumerated()), id: \.offset) { idx, date in
+                        let label = idx == 0 ? "Today" : (idx == 1 ? "Tomorrow" : weekdayShort(date))
+                        dayCard(label: label, date: date)
+                    }
+                }
+            }
+            .padding(.horizontal).padding(.bottom, 110)
+        }
+        .sheet(item: $picking) { ref in mealPicker(ref) }
+    }
+
+    func dayCard(label: String, date: String) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(label).fontWeight(.bold).foregroundColor(theme.ink).padding(.bottom, 8)
+            ForEach(Array(mealSlots.enumerated()), id: \.offset) { i, s in
+                Button(action: { picking = MealSlotRef(date: date, slot: s.key) }) {
+                    HStack {
+                        Text(s.label.uppercased())
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .foregroundColor(theme.inkMute).frame(width: 78, alignment: .leading)
+                        if let name = entryFor(date, s.key).flatMap({ recipeName($0.recipeId) }) {
+                            Text(name).fontWeight(.semibold).foregroundColor(theme.ink)
+                        } else {
+                            Text("— tap to plan").foregroundColor(theme.inkMute)
+                        }
+                        Spacer()
+                    }
+                    .padding(.vertical, 9).contentShape(Rectangle())
+                }.buttonStyle(PlainButtonStyle())
+                if i != mealSlots.count - 1 { Divider() }
+            }
+        }
+        .padding(14).toolboxCard(theme)
+    }
+
+    func mealPicker(_ ref: MealSlotRef) -> some View {
+        let current = entryFor(ref.date, ref.slot)
+        return NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 8) {
+                    if current != nil {
+                        SwiftChunkyButton(text: "Clear this slot", palette: palette, variant: "ghost", size: "sm") {
+                            store.clearMealSlot(date: ref.date, slot: ref.slot); picking = nil
+                        }
+                    }
+                    ForEach(store.state.recipes.sorted { $0.name.lowercased() < $1.name.lowercased() }, id: \.id) { r in
+                        Button(action: { store.setMealSlot(date: ref.date, slot: ref.slot, recipeId: r.id); picking = nil }) {
+                            HStack {
+                                Text(r.name).fontWeight(.semibold).foregroundColor(theme.ink)
+                                Spacer()
+                                if current?.recipeId == r.id { Image(systemName: "checkmark").foregroundColor(palette.primary) }
+                            }
+                            .padding().contentShape(Rectangle())
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .background(theme.surface).cornerRadius(12)
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(theme.line, lineWidth: 1))
+                    }
+                }
+                .padding()
+            }
+            .background(theme.bgSubtle.ignoresSafeArea())
+            .navigationTitle("Plan \(mealSlots.first { $0.key == ref.slot }?.label ?? ref.slot)")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { picking = nil } } }
         }
     }
 }
