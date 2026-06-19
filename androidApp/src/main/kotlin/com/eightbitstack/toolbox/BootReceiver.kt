@@ -9,6 +9,8 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
         AndroidContext.applicationContext = context.applicationContext
-        ReminderScheduler.sync(context, ToolboxRepository().state)
+        val state = ToolboxRepository().state
+        ReminderScheduler.sync(context, state)
+        ExpiryScheduler.sync(context, state)
     }
 }

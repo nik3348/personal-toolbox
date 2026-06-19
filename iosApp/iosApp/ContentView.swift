@@ -262,6 +262,7 @@ class ToolboxObservableState: ObservableObject, ToolboxRepositoryListener {
     func setDarkMode(on: Bool) { repo.setDarkMode(on: on) }
     func setShowFlourishes(on: Bool) { repo.setShowFlourishes(on: on) }
     func setBackgroundPattern(pattern: String) { repo.setBackgroundPattern(pattern: pattern) }
+    func setExpiryNotifications(on: Bool) { repo.setExpiryNotifications(on: on) }
 }
 
 struct ContentView: View {
@@ -279,6 +280,9 @@ struct ContentView: View {
     }
     var backgroundPatternBinding: Binding<String> {
         Binding(get: { store.state.settings.backgroundPattern }, set: { store.setBackgroundPattern(pattern: $0) })
+    }
+    var expiryNotificationsBinding: Binding<Bool> {
+        Binding(get: { store.state.settings.expiryNotificationsOn }, set: { store.setExpiryNotifications(on: $0) })
     }
 
     var currentPalette: SwiftBrandPalette {
@@ -315,6 +319,7 @@ struct ContentView: View {
                             darkMode: darkModeBinding,
                             showFlourishes: showFlourishesBinding,
                             backgroundPattern: backgroundPatternBinding,
+                            expiryNotifications: expiryNotificationsBinding,
                             palette: currentPalette,
                             theme: theme
                         )
@@ -1818,6 +1823,7 @@ struct SwiftMeScreen: View {
     @Binding var darkMode: Bool
     @Binding var showFlourishes: Bool
     @Binding var backgroundPattern: String
+    @Binding var expiryNotifications: Bool
     let palette: SwiftBrandPalette
     let theme: SwiftTheme
 
@@ -1857,6 +1863,9 @@ struct SwiftMeScreen: View {
                         }.tint(palette.primary)
                         Toggle(isOn: $darkMode) {
                             Text("Dark mode").font(.system(size: 13, weight: .bold)).foregroundColor(theme.ink)
+                        }.tint(palette.primary)
+                        Toggle(isOn: $expiryNotifications) {
+                            Text("Fridge expiry alerts").font(.system(size: 13, weight: .bold)).foregroundColor(theme.ink)
                         }.tint(palette.primary)
                     }
                     .padding(14)

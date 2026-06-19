@@ -11,6 +11,7 @@ import SharedLogic
 /// the current state on every mutation, mirroring the Android listener.
 enum ReminderScheduler {
     private static let prefix = "toolbox.reminder."
+    private static let fridgePrefix = "toolbox.fridge."
 
     /// Ask once for permission to show alerts/sounds/badges.
     static func requestAuthorization() {
@@ -28,11 +29,19 @@ enum ReminderScheduler {
         for r in active {
             desired.append(contentsOf: requests(for: r, quietHoursOn: state.quietHoursOn))
         }
+
+        // Add fridge notifications if enabled
+        if state.settings.expiryNotificationsOn {
+            for f in state.fridge {
+                desired.append(contentsOf: fridgeRequests(for: f))
+            }
+        }
+
         let desiredIds = Set(desired.map { $0.identifier })
 
         center.getPendingNotificationRequests { pending in
             // Only ever touch requests we own.
-            let ours = pending.map { $0.identifier }.filter { $0.hasPrefix(prefix) }
+            let ours = pending.map { $0.identifier }.filter { $0.hasPrefix(prefix) || $0.hasPrefix(fridgePrefix) }
             let stale = ours.filter { !desiredIds.contains($0) }
             if !stale.isEmpty {
                 center.removePendingNotificationRequests(withIdentifiers: stale)
@@ -117,5 +126,64 @@ enum ReminderScheduler {
 
     private static func request(_ id: String, _ content: UNNotificationContent, _ trigger: UNNotificationTrigger) -> UNNotificationRequest {
         UNNotificationRequest(identifier: id, content: content, trigger: trigger)
+    }
+
+    private static func fridgeRequests(for f: FridgeItem) -> [UNNotificationRequest] {
+        guard !f.expiry.isEmpty else { return [] }
+
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+
+        guard let expiryDate = dateFormatter.date(from: f.expiry) else { return [] }
+
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let targetDay = calendar.startOfDay(for: expiryDate)
+
+        // Only schedule if today or in the future
+        guard targetDay >= today else { return [] }
+
+        var requests: [UNNotificationRequest] = []
+
+        // 1. Day of expiry notification
+        let todayComps = calendar.dateComponents([.year, .month, .day], from: targetDay)
+        var triggerComps = DateComponents()
+        triggerComps.year = todayComps.year
+        triggerComps.month = todayComps.month
+        triggerComps.day = todayComps.day
+        triggerComps.hour = 9
+        triggerComps.minute = 0
+
+        let todayContent = UNMutableNotificationContent()
+        todayContent.title = "Fridge Expiry Alert"
+        todayContent.body = "\(f.name) expires today!"
+        todayContent.sound = .default
+        todayContent.interruptionLevel = .active
+
+        let todayTrigger = UNCalendarNotificationTrigger(dateMatching: triggerComps, repeats: false)
+        requests.append(request("\(fridgePrefix)\(f.id).today", todayContent, todayTrigger))
+
+        // 2. Day before expiry notification
+        if let yesterday = calendar.date(byAdding: .day, value: -1, to: targetDay), yesterday >= today {
+            let yesterdayComps = calendar.dateComponents([.year, .month, .day], from: yesterday)
+            var triggerCompsY = DateComponents()
+            triggerCompsY.year = yesterdayComps.year
+            triggerCompsY.month = yesterdayComps.month
+            triggerCompsY.day = yesterdayComps.day
+            triggerCompsY.hour = 9
+            triggerCompsY.minute = 0
+
+            let tomorrowContent = UNMutableNotificationContent()
+            tomorrowContent.title = "Fridge Expiry Alert"
+            tomorrowContent.body = "\(f.name) expires tomorrow!"
+            tomorrowContent.sound = .default
+            tomorrowContent.interruptionLevel = .active
+
+            let tomorrowTrigger = UNCalendarNotificationTrigger(dateMatching: triggerCompsY, repeats: false)
+            requests.append(request("\(fridgePrefix)\(f.id).tomorrow", tomorrowContent, tomorrowTrigger))
+        }
+
+        return requests
     }
 }

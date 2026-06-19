@@ -241,6 +241,10 @@ class ToolboxRepository(private val storage: StorageProvider = KeyValueStorage()
         state = state.copy(settings = state.settings.copy(backgroundPattern = pattern))
     }
 
+    fun setExpiryNotifications(on: Boolean) {
+        state = state.copy(settings = state.settings.copy(expiryNotificationsOn = on))
+    }
+
     fun reset() {
         // Resets demo data but keeps the user's appearance settings
         state = getSeedState().copy(settings = state.settings)
@@ -363,6 +367,7 @@ class ToolboxRepository(private val storage: StorageProvider = KeyValueStorage()
         sb.append("DARKMODE=").append(s.settings.darkMode).append("\n")
         sb.append("FLOURISHES=").append(s.settings.showFlourishes).append("\n")
         sb.append("PATTERN=").append(escape(s.settings.backgroundPattern)).append("\n")
+        sb.append("EXPIRYNOTIFS=").append(s.settings.expiryNotificationsOn).append("\n")
         sb.append("UPDATEDAT=").append(s.updatedAt).append("\n")
         sb.append("ROLLOVER=").append(escape(s.lastRolloverDate)).append("\n")
         sb.append("[REMINDERS]\n")
@@ -447,6 +452,8 @@ class ToolboxRepository(private val storage: StorageProvider = KeyValueStorage()
                     settings = settings.copy(showFlourishes = trimmed.substringAfter("FLOURISHES=").toBoolean())
                 } else if (trimmed.startsWith("PATTERN=")) {
                     settings = settings.copy(backgroundPattern = unescape(trimmed.substringAfter("PATTERN=")))
+                } else if (trimmed.startsWith("EXPIRYNOTIFS=")) {
+                    settings = settings.copy(expiryNotificationsOn = trimmed.substringAfter("EXPIRYNOTIFS=").toBoolean())
                 } else if (trimmed.startsWith("UPDATEDAT=")) {
                     updatedAt = trimmed.substringAfter("UPDATEDAT=").toLongOrNull() ?: 0L
                 } else if (trimmed.startsWith("ROLLOVER=")) {

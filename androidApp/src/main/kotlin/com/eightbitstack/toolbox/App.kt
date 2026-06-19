@@ -33,6 +33,7 @@ fun App(
             override fun onStateChanged(state: ToolboxState) {
                 appState = state
                 ReminderScheduler.sync(appContext, state)
+                ExpiryScheduler.sync(appContext, state)
             }
         }
         repository.addListener(listener)
@@ -192,7 +193,9 @@ fun App(
                         backgroundPattern = backgroundPattern,
                         onBackgroundPatternChange = { repository.setBackgroundPattern(it) },
                         darkMode = darkMode,
-                        onDarkModeChange = { repository.setDarkMode(it) }
+                        onDarkModeChange = { repository.setDarkMode(it) },
+                        expiryNotifications = settings.expiryNotificationsOn,
+                        onExpiryNotificationsChange = { repository.setExpiryNotifications(it) }
                     )
                 }
             }

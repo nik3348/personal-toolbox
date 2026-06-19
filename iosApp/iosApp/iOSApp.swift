@@ -36,9 +36,11 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
-        // Tapping a reminder notification opens the Reminders screen.
+        // Tapping a reminder notification opens the Reminders screen, and fridge opens fridge.
         if response.notification.request.identifier.hasPrefix("toolbox.reminder.") {
             AppRouter.shared.pendingTab = "reminders"
+        } else if response.notification.request.identifier.hasPrefix("toolbox.fridge.") {
+            AppRouter.shared.pendingTab = "fridge"
         }
         completionHandler()
     }

@@ -71,7 +71,8 @@ data class AppSettings(
     val accent: String = "indigo",
     val darkMode: Boolean = false,
     val showFlourishes: Boolean = true,
-    val backgroundPattern: String = "grid"
+    val backgroundPattern: String = "grid",
+    val expiryNotificationsOn: Boolean = true
 )
 
 data class ToolboxState(

@@ -28,7 +28,9 @@ fun MeScreen(
     backgroundPattern: String,
     onBackgroundPatternChange: (String) -> Unit,
     darkMode: Boolean,
-    onDarkModeChange: (Boolean) -> Unit
+    onDarkModeChange: (Boolean) -> Unit,
+    expiryNotifications: Boolean,
+    onExpiryNotificationsChange: (Boolean) -> Unit
 ) {
     var showResetFeedback by remember { mutableStateOf(false) }
     var resetClickCount by remember { mutableStateOf(0) }
@@ -161,6 +163,16 @@ fun MeScreen(
                         ) {
                             Text("Dark mode", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = ToolboxTheme.ink)
                             Toggle(value = darkMode, onChange = onDarkModeChange, size = "sm")
+                        }
+
+                        // Expiry alerts toggle
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Fridge expiry alerts", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = ToolboxTheme.ink)
+                            Toggle(value = expiryNotifications, onChange = onExpiryNotificationsChange, size = "sm")
                         }
                     }
                 }
